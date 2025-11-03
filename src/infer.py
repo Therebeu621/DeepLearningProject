@@ -66,6 +66,16 @@ def predict_one(wav_path: Path, weights: str = "weights/urbansound_cnn.pt", labe
     else:
         print(f"Pred classID: {idx} (p={probs[idx]:.2f})")
 
+    k = min(3, len(probs))
+    topk = torch.topk(torch.from_numpy(probs), k)
+    print("Top-k:")
+    for rank, (score, class_idx) in enumerate(zip(topk.values.tolist(), topk.indices.tolist()), start=1):
+        if labels is not None and 0 <= class_idx < len(labels):
+            name = labels[class_idx]
+        else:
+            name = f"classID={class_idx}"
+        print(f"  {rank}. {name} — p={score:.2f}")
+
 
 if __name__ == "__main__":
     example = None

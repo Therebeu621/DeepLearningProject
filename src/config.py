@@ -7,8 +7,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR     = PROJECT_ROOT / "data"
 SUBSET_DIR   = DATA_DIR / "subset"
 WEIGHTS_DIR  = PROJECT_ROOT / "weights"
+REPORTS_DIR  = PROJECT_ROOT / "reports"
 WEIGHTS_DIR.mkdir(exist_ok=True)
 SUBSET_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR.mkdir(exist_ok=True)
 
 # --- Détection de la racine dataset ---
 def _candidate_roots():
@@ -63,7 +65,7 @@ TARGET_LEN = 173  # ~4s à 22.05 kHz avec hop 512 (ajuste si besoin)
 # --- Hyperparams train ---
 BATCH_SIZE = 64
 EPOCHS     = 8
-LR         = 1e-3
+LR         = 5e-4
 SEED       = 42
 
 # --- Nombre de classes : inféré depuis le CSV (override possible par env) ---

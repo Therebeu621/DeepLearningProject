@@ -1,5 +1,7 @@
+import argparse
 import random
 from pathlib import Path
+
 import numpy as np, pandas as pd, torch
 from torch.utils.data import Dataset, DataLoader
 from torch import nn
@@ -31,15 +33,34 @@ try:
 except AttributeError:
     pass
 
+
 class US8KDataset(Dataset):
-    def __init__(self, df, audio_dir: Path):
+    def __init__(
+        self,
+        df,
+        audio_dir: Path,
+        augment_time: bool = False,
+        augment_noise: bool = False,
+        augment_spec: bool = False,
+    ):
         self.df = df.reset_index(drop=True).copy()
         self.audio_dir = audio_dir
         self.paths = [resolve_audio_path(r, self.audio_dir) for _, r in self.df.iterrows()]
         self.labels = self.df["classID"].astype(int).tolist()
-    def __len__(self): return len(self.df)
+        self.augment_time = augment_time
+        self.augment_noise = augment_noise
+        self.augment_spec = augment_spec
+
+    def __len__(self):
+        return len(self.df)
+
     def __getitem__(self, i):
-        x = wav_to_logmel(self.paths[i])
+        x = wav_to_logmel(
+            self.paths[i],
+            augment_time=self.augment_time,
+            augment_noise=self.augment_noise,
+            augment_spec=self.augment_spec,
+        )
         return x, self.labels[i]
 
 def run_epoch(loader, model, loss_fn, opt=None):
@@ -57,7 +78,15 @@ def run_epoch(loader, model, loss_fn, opt=None):
         total += yb.size(0)
     return tot_loss/total, correct/total
 
-def main(use_subset=True):
+def main(
+    use_subset: bool = True,
+    batch_size: int = BATCH_SIZE,
+    epochs: int = EPOCHS,
+    lr: float = LR,
+    aug_time: bool = False,
+    aug_noise: bool = False,
+    aug_spec: bool = False,
+):
     meta = pd.read_csv(CSV_PATH)
     if use_subset and (Path("data/subset/subset_meta.csv").exists()):
         meta = pd.read_csv("data/subset/subset_meta.csv")
@@ -83,15 +112,31 @@ def main(use_subset=True):
     print(f"CSV_PATH   : {CSV_PATH}")
     print(f"N_CLASSES  : {len(class_to_idx)}")
     print(f"Train size : {len(train_df)} | Val size : {len(val_df)}")
+    print(f"Batch size : {batch_size} | Epochs : {epochs} | LR : {lr}")
+    print(
+        "Augmentations : "
+        f"time_shift={'ON' if aug_time else 'off'} | "
+        f"noise={'ON' if aug_noise else 'off'} | "
+        f"spec_aug={'ON' if aug_spec else 'off'}"
+    )
 
-    train_dl = DataLoader(US8KDataset(train_df, AUDIO_DIR), batch_size=BATCH_SIZE, shuffle=True)
-    val_dl   = DataLoader(US8KDataset(val_df, AUDIO_DIR),   batch_size=BATCH_SIZE, shuffle=False)
+    train_ds = US8KDataset(
+        train_df,
+        AUDIO_DIR,
+        augment_time=aug_time,
+        augment_noise=aug_noise,
+        augment_spec=aug_spec,
+    )
+    val_ds = US8KDataset(val_df, AUDIO_DIR)
+
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_dl   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False)
 
     model = SimpleCNN(n_classes=len(class_to_idx)).to(DEVICE)
     loss_fn = nn.CrossEntropyLoss()
-    opt = torch.optim.Adam(model.parameters(), lr=LR)
+    opt = torch.optim.Adam(model.parameters(), lr=lr)
 
-    for ep in range(1, EPOCHS+1):
+    for ep in range(1, epochs + 1):
         tr_loss, tr_acc = run_epoch(train_dl, model, loss_fn, opt)
         va_loss, va_acc = run_epoch(val_dl,   model, loss_fn, None)
         print(f"[{ep:02d}] train {tr_acc*100:5.1f}% | val {va_acc*100:5.1f}%  (loss {va_loss:.4f})")
@@ -105,4 +150,26 @@ def main(use_subset=True):
     print("Saved:", out)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Train UrbanSound8K classifier.")
+    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Nombre d'époques d'entraînement.")
+    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Taille de batch.")
+    parser.add_argument("--lr", type=float, default=LR, help="Taux d'apprentissage.")
+    parser.add_argument(
+        "--no-subset",
+        action="store_false",
+        dest="use_subset",
+        help="Utiliser le CSV complet même si un subset est présent.",
+    )
+    parser.add_argument("--aug-time", action="store_true", help="Active le time-shift aléatoire.")
+    parser.add_argument("--aug-noise", action="store_true", help="Ajoute un bruit gaussien contrôlé (SNR -20→-10 dB).")
+    parser.add_argument("--aug-spec", action="store_true", help="Applique un SpecAugment (masques temps/fréquence).")
+    args = parser.parse_args()
+    main(
+        use_subset=args.use_subset,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        lr=args.lr,
+        aug_time=args.aug_time,
+        aug_noise=args.aug_noise,
+        aug_spec=args.aug_spec,
+    )

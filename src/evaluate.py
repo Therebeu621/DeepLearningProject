@@ -1,10 +1,14 @@
+import json
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import classification_report, confusion_matrix
 
-from .config import CSV_PATH, AUDIO_DIR, SUBSET_DIR, BATCH_SIZE
+from .config import CSV_PATH, AUDIO_DIR, SUBSET_DIR, BATCH_SIZE, REPORTS_DIR
 from .data_utils import resolve_audio_path
 from .features import wav_to_logmel
 from .model import SimpleCNN
@@ -105,16 +109,84 @@ def main():
             y_pred.extend(logits.argmax(1).cpu().tolist())
 
     # 7) Préparation des labels pour l'affichage
+    labels = sorted(set(y_true) | set(y_pred))
     if ckpt_mapping:
         idx_to_name = {idx: name for name, idx in ckpt_mapping.items()}
-        target_names = [idx_to_name[i] for i in sorted(idx_to_name)]
+        name_lookup = {i: idx_to_name.get(i, str(i)) for i in labels}
     else:
         cat = meta["class"].astype("category").cat
         id_to_name = {code: cat.categories[code] for code in range(len(cat.categories))}
-        target_names = [id_to_name[i] for i in sorted(set(y_true) | set(y_pred))]
+        name_lookup = {i: id_to_name.get(i, str(i)) for i in labels}
 
-    print(classification_report(y_true, y_pred, target_names=target_names, zero_division=0))
-    print(confusion_matrix(y_true, y_pred))
+    target_names = [name_lookup[i] for i in labels]
+
+    report_str = classification_report(
+        y_true, y_pred, labels=labels, target_names=target_names, zero_division=0
+    )
+    print(report_str)
+
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    report_dict = classification_report(
+        y_true, y_pred, labels=labels, target_names=target_names, zero_division=0, output_dict=True
+    )
+
+    REPORTS_DIR.mkdir(exist_ok=True)
+    cm_path = REPORTS_DIR / "confusion_matrix.png"
+    metrics_path = REPORTS_DIR / "metrics.json"
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(cm, interpolation="nearest", cmap="Blues")
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(
+        xticks=np.arange(len(labels)),
+        yticks=np.arange(len(labels)),
+        xticklabels=target_names,
+        yticklabels=target_names,
+        ylabel="Vérité terrain",
+        xlabel="Prédiction",
+        title="Matrice de confusion",
+    )
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+    thresh = cm.max() / 2 if cm.size else 0
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(
+                j,
+                i,
+                f"{cm[i, j]}",
+                ha="center",
+                va="center",
+                color="white" if cm[i, j] > thresh else "black",
+            )
+
+    fig.tight_layout()
+    fig.savefig(cm_path, dpi=200)
+    plt.close(fig)
+
+    per_class = {
+        name: {
+            "precision": float(report_dict[name]["precision"]),
+            "recall": float(report_dict[name]["recall"]),
+            "f1": float(report_dict[name]["f1-score"]),
+            "support": int(report_dict[name]["support"]),
+        }
+        for name in target_names
+        if name in report_dict
+    }
+
+    metrics_payload = {
+        "accuracy": float(report_dict.get("accuracy", 0.0)),
+        "macro_f1": float(report_dict.get("macro avg", {}).get("f1-score", 0.0)),
+        "weighted_f1": float(report_dict.get("weighted avg", {}).get("f1-score", 0.0)),
+        "per_class": per_class,
+    }
+
+    with metrics_path.open("w", encoding="utf-8") as f:
+        json.dump(metrics_payload, f, indent=2, ensure_ascii=False)
+
+    print("Confusion matrix saved to:", cm_path)
+    print("Metrics JSON saved to:", metrics_path)
 
 
 if __name__ == "__main__":
