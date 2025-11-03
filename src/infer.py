@@ -11,33 +11,33 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def _load_state(weights_path: Path):
-    # Chargement sécurisé des poids
-    return torch.load(weights_path, map_location=DEVICE, weights_only=True)
+    checkpoint = torch.load(weights_path, map_location=DEVICE)
+    if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
+        state = checkpoint["state_dict"]
+        class_to_idx = checkpoint.get("class_to_idx")
+    else:
+        state = checkpoint
+        class_to_idx = None
+    return state, class_to_idx
 
 
-def _load_labels_for_checkpoint(n_classes: int):
+def _load_labels_for_checkpoint(n_classes: int, saved_mapping=None):
     """
-    Essaie d'inférer l'ordre des labels (noms lisibles) depuis les métadonnées.
-    Priorité :
-      1) subset_meta.csv si présent (cohérent avec un entraînement subset)
-      2) CSV complet UrbanSound8K
-    On recode : classID = codes(class) afin d'obtenir un mapping 0..k-1
-    correspondant à l'entraînement.
-    Si le nombre de catégories != n_classes, on retourne None (fallback classID).
+    Essaie d'inférer l'ordre des labels (noms lisibles) depuis le checkpoint
+    ou, à défaut, depuis les métadonnées.
     """
-    # 1) subset si dispo
+    if saved_mapping:
+        idx_to_name = {idx: name for name, idx in saved_mapping.items()}
+        return [idx_to_name[i] for i in range(n_classes) if i in idx_to_name]
+
     subset_meta = SUBSET_DIR / "subset_meta.csv"
     if subset_meta.exists():
         meta = pd.read_csv(subset_meta)
     else:
-        # 2) sinon, CSV complet
         meta = pd.read_csv(CSV_PATH)
 
-    # Harmonise: classID = codes(class)
     cat = meta["class"].astype("category").cat
     labels = list(cat.categories)
-
-    # Vérifie la cohérence avec le checkpoint
     if len(labels) != n_classes:
         return None
     return labels
@@ -46,13 +46,11 @@ def _load_labels_for_checkpoint(n_classes: int):
 def predict_one(wav_path: Path, weights: str = "weights/urbansound_cnn.pt", labels=None):
     x = wav_to_logmel(wav_path).unsqueeze(0)  # [1, n_mels, T]
 
-    # Déduire dynamiquement le nb de classes depuis le checkpoint
-    state = _load_state(Path(weights))
+    state, saved_mapping = _load_state(Path(weights))
     n_classes = state["head.1.weight"].shape[0]
 
-    # Si labels non fournis, tentative auto
     if labels is None:
-        labels = _load_labels_for_checkpoint(n_classes)
+        labels = _load_labels_for_checkpoint(n_classes, saved_mapping)
 
     model = SimpleCNN(n_classes=n_classes).to(DEVICE)
     model.load_state_dict(state, strict=True)
@@ -70,7 +68,6 @@ def predict_one(wav_path: Path, weights: str = "weights/urbansound_cnn.pt", labe
 
 
 if __name__ == "__main__":
-    # Exemple : prend un .wav du subset si présent, sinon message explicite
     example = None
     subset_dir = Path("data/subset")
     if subset_dir.exists():
