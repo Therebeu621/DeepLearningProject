@@ -2,7 +2,8 @@ from pathlib import Path
 import pandas as pd
 import torch
 
-from .config import CSV_PATH, SUBSET_DIR
+from .config import CSV_PATH, SUBSET_DIR, AUDIO_DIR
+from .data_utils import resolve_audio_path
 from .features import wav_to_logmel
 from .model import SimpleCNN
 
@@ -78,8 +79,18 @@ if __name__ == "__main__":
             break
 
     if example is None:
-        raise FileNotFoundError(
-            "Aucun exemple trouvé. Place un .wav dans data/subset/ ou passe un chemin à predict_one()."
-        )
+        meta_candidates = [
+            SUBSET_DIR / "subset_meta.csv",
+            CSV_PATH,
+        ]
+        for meta_path in meta_candidates:
+            if meta_path.exists():
+                meta = pd.read_csv(meta_path)
+                if not meta.empty:
+                    example = resolve_audio_path(meta.iloc[0], AUDIO_DIR)
+                    break
+
+    if example is None:
+        raise FileNotFoundError("Aucun wav accessible. Fourni un chemin à predict_one().")
 
     predict_one(example)

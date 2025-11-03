@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from .config import (CSV_PATH, AUDIO_DIR, WEIGHTS_DIR,
                     BATCH_SIZE, EPOCHS, LR, SEED)
+from .data_utils import resolve_audio_path
 from .features import wav_to_logmel
 from .model import SimpleCNN
 
@@ -14,14 +15,14 @@ torch.manual_seed(SEED); np.random.seed(SEED)
 
 class US8KDataset(Dataset):
     def __init__(self, df, audio_dir: Path):
-        self.df = df.reset_index(drop=True)
+        self.df = df.reset_index(drop=True).copy()
         self.audio_dir = audio_dir
+        self.paths = [resolve_audio_path(r, self.audio_dir) for _, r in self.df.iterrows()]
+        self.labels = self.df["classID"].astype(int).tolist()
     def __len__(self): return len(self.df)
     def __getitem__(self, i):
-        r = self.df.iloc[i]
-        x = wav_to_logmel(self.audio_dir / f"fold{int(r['fold'])}" / r["slice_file_name"])
-        y = int(r["classID"])
-        return x, y
+        x = wav_to_logmel(self.paths[i])
+        return x, self.labels[i]
 
 def run_epoch(loader, model, loss_fn, opt=None):
     train = opt is not None

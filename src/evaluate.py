@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import classification_report, confusion_matrix
 
 from .config import CSV_PATH, AUDIO_DIR, SUBSET_DIR, BATCH_SIZE
+from .data_utils import resolve_audio_path
 from .features import wav_to_logmel
 from .model import SimpleCNN
 
@@ -18,24 +19,25 @@ class US8KDataset(Dataset):
     - Sinon, on lit depuis AUDIO_DIR/fold{n}/slice_file_name.
     """
     def __init__(self, df: pd.DataFrame, audio_dir: Path, use_subset_audio: bool = False):
-        self.df = df.reset_index(drop=True)
+        self.df = df.reset_index(drop=True).copy()
         self.audio_dir = audio_dir
         self.use_subset_audio = use_subset_audio
+        self.labels = self.df["classID"].astype(int).tolist()
+        self.paths = []
+        for _, row in self.df.iterrows():
+            if self.use_subset_audio:
+                subset_path = SUBSET_DIR / row["slice_file_name"]
+                if subset_path.exists():
+                    self.paths.append(subset_path)
+                    continue
+            self.paths.append(resolve_audio_path(row, self.audio_dir))
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, i: int):
-        r = self.df.iloc[i]
-        if self.use_subset_audio:
-            wav_path = SUBSET_DIR / r["slice_file_name"]
-        else:
-            fold = f"fold{int(r['fold'])}"
-            wav_path = self.audio_dir / fold / r["slice_file_name"]
-
-        x = wav_to_logmel(wav_path)  # [n_mels, T]
-        y = int(r["classID"])
-        return x, y
+        x = wav_to_logmel(self.paths[i])  # [n_mels, T]
+        return x, self.labels[i]
 
 
 def _load_state(weights_path: Path):
