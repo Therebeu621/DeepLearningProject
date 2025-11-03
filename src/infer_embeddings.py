@@ -5,7 +5,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import torch
-import torch.nn.functional as F
+import soundfile as sf
 
 from .config import DATA_DIR, WEIGHTS_DIR
 from .precompute_embeddings import _load_backbone
@@ -33,13 +33,26 @@ def _normalize(x, mean, scale):
 
 def _extract_embedding(model, wav_path: Path):
     device = torch.device("cpu")
-    y, _ = librosa.load(wav_path, sr=TARGET_SR, mono=True)
-    audio = torch.from_numpy(y).float().unsqueeze(0)
-    if audio.shape[1] < TARGET_LEN:
-        audio = F.pad(audio, (0, TARGET_LEN - audio.shape[1]))
-    else:
-        audio = audio[:, :TARGET_LEN]
-    audio = audio.to(device)
+    target_len_samples = int(TARGET_SR * TARGET_LEN)
+
+    waveform, sr = sf.read(wav_path, always_2d=False)
+    if waveform.ndim == 2:
+        waveform = waveform.mean(axis=1)
+    waveform = waveform.astype(np.float32, copy=False)
+
+    if sr != TARGET_SR:
+        waveform = librosa.resample(waveform, orig_sr=sr, target_sr=TARGET_SR, res_type="kaiser_best")
+
+    if waveform.size == 0:
+        waveform = np.zeros(target_len_samples, dtype=np.float32)
+
+    if waveform.shape[0] < target_len_samples:
+        pad_width = target_len_samples - waveform.shape[0]
+        waveform = np.pad(waveform, (0, pad_width))
+    elif waveform.shape[0] > target_len_samples:
+        waveform = waveform[:target_len_samples]
+
+    audio = torch.from_numpy(waveform).unsqueeze(0).to(device)
     with torch.no_grad():
         emb = model.forward_embedding(audio)
     return emb.squeeze(0).cpu().numpy()
