@@ -1,4 +1,5 @@
 import argparse
+import copy
 import random
 from pathlib import Path
 
@@ -39,6 +40,7 @@ class US8KDataset(Dataset):
         self,
         df,
         audio_dir: Path,
+        train_mode: bool = False,
         augment_time: bool = False,
         augment_noise: bool = False,
         augment_spec: bool = False,
@@ -47,6 +49,7 @@ class US8KDataset(Dataset):
         self.audio_dir = audio_dir
         self.paths = [resolve_audio_path(r, self.audio_dir) for _, r in self.df.iterrows()]
         self.labels = self.df["classID"].astype(int).tolist()
+        self.train_mode = train_mode
         self.augment_time = augment_time
         self.augment_noise = augment_noise
         self.augment_spec = augment_spec
@@ -57,6 +60,7 @@ class US8KDataset(Dataset):
     def __getitem__(self, i):
         x = wav_to_logmel(
             self.paths[i],
+            train_mode=self.train_mode,
             augment_time=self.augment_time,
             augment_noise=self.augment_noise,
             augment_spec=self.augment_spec,
@@ -123,23 +127,56 @@ def main(
     train_ds = US8KDataset(
         train_df,
         AUDIO_DIR,
+        train_mode=True,
         augment_time=aug_time,
         augment_noise=aug_noise,
         augment_spec=aug_spec,
     )
-    val_ds = US8KDataset(val_df, AUDIO_DIR)
+    val_ds = US8KDataset(val_df, AUDIO_DIR, train_mode=False)
 
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_dl   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False)
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_dl   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
 
     model = SimpleCNN(n_classes=len(class_to_idx)).to(DEVICE)
-    loss_fn = nn.CrossEntropyLoss()
+
+    counts = train_df["classID"].value_counts().reindex(range(len(class_to_idx)), fill_value=1)
+    weights = (1.0 / counts.values)
+    weights = weights / weights.sum() * len(class_to_idx)
+    class_weights = torch.tensor(weights, dtype=torch.float32, device=DEVICE)
+    print("Class weights :", weights)
+    loss_fn = nn.CrossEntropyLoss(weight=class_weights)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
+
+    best_state = None
+    best_val_loss = float("inf")
+    best_epoch = 0
+    epochs_no_improve = 0
+    patience = 5
 
     for ep in range(1, epochs + 1):
         tr_loss, tr_acc = run_epoch(train_dl, model, loss_fn, opt)
         va_loss, va_acc = run_epoch(val_dl,   model, loss_fn, None)
-        print(f"[{ep:02d}] train {tr_acc*100:5.1f}% | val {va_acc*100:5.1f}%  (loss {va_loss:.4f})")
+        scheduler.step()
+        current_lr = scheduler.get_last_lr()[0]
+        print(
+            f"[{ep:02d}] train {tr_acc*100:5.1f}% | val {va_acc*100:5.1f}%  "
+            f"(loss {va_loss:.4f}) | lr {current_lr:.2e}"
+        )
+
+        if va_loss < best_val_loss - 1e-4:
+            best_val_loss = va_loss
+            best_epoch = ep
+            epochs_no_improve = 0
+            best_state = copy.deepcopy(model.state_dict())
+        else:
+            epochs_no_improve += 1
+            if epochs_no_improve >= patience:
+                print(f"Early stopping triggered at epoch {ep}. Best val loss {best_val_loss:.4f} (epoch {best_epoch}).")
+                break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
 
     out = WEIGHTS_DIR / "urbansound_cnn.pt"
     checkpoint = {
@@ -161,7 +198,7 @@ if __name__ == "__main__":
         help="Utiliser le CSV complet même si un subset est présent.",
     )
     parser.add_argument("--aug-time", action="store_true", help="Active le time-shift aléatoire.")
-    parser.add_argument("--aug-noise", action="store_true", help="Ajoute un bruit gaussien contrôlé (SNR -20→-10 dB).")
+    parser.add_argument("--aug-noise", action="store_true", help="Ajoute un bruit gaussien léger (σ 0.005→0.02).")
     parser.add_argument("--aug-spec", action="store_true", help="Applique un SpecAugment (masques temps/fréquence).")
     args = parser.parse_args()
     main(

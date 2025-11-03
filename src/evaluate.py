@@ -41,7 +41,7 @@ class US8KDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, i: int):
-        x = wav_to_logmel(self.paths[i])  # [n_mels, T]
+        x = wav_to_logmel(self.paths[i], train_mode=False)  # [n_mels, T]
         return x, self.labels[i]
 
 
@@ -132,6 +132,7 @@ def main():
 
     REPORTS_DIR.mkdir(exist_ok=True)
     cm_path = REPORTS_DIR / "confusion_matrix.png"
+    cm_norm_path = REPORTS_DIR / "confusion_matrix_norm.png"
     metrics_path = REPORTS_DIR / "metrics.json"
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -164,6 +165,40 @@ def main():
     fig.savefig(cm_path, dpi=200)
     plt.close(fig)
 
+    cm_norm = cm.astype(float)
+    row_sums = cm_norm.sum(axis=1, keepdims=True)
+    cm_norm = np.divide(cm_norm, row_sums, where=row_sums != 0)
+    cm_norm = np.nan_to_num(cm_norm)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(cm_norm, interpolation="nearest", cmap="Blues", vmin=0.0, vmax=1.0)
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(
+        xticks=np.arange(len(labels)),
+        yticks=np.arange(len(labels)),
+        xticklabels=target_names,
+        yticklabels=target_names,
+        ylabel="Vérité terrain",
+        xlabel="Prédiction",
+        title="Matrice de confusion (normalisée)",
+    )
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+    for i in range(cm_norm.shape[0]):
+        for j in range(cm_norm.shape[1]):
+            ax.text(
+                j,
+                i,
+                f"{cm_norm[i, j]:.2f}",
+                ha="center",
+                va="center",
+                color="white" if cm_norm[i, j] > 0.5 else "black",
+            )
+
+    fig.tight_layout()
+    fig.savefig(cm_norm_path, dpi=200)
+    plt.close(fig)
+
     per_class = {
         name: {
             "precision": float(report_dict[name]["precision"]),
@@ -180,12 +215,14 @@ def main():
         "macro_f1": float(report_dict.get("macro avg", {}).get("f1-score", 0.0)),
         "weighted_f1": float(report_dict.get("weighted avg", {}).get("f1-score", 0.0)),
         "per_class": per_class,
+        "classification_report": report_dict,
     }
 
     with metrics_path.open("w", encoding="utf-8") as f:
         json.dump(metrics_payload, f, indent=2, ensure_ascii=False)
 
     print("Confusion matrix saved to:", cm_path)
+    print("Normalized confusion matrix saved to:", cm_norm_path)
     print("Metrics JSON saved to:", metrics_path)
 
 

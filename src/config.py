@@ -63,9 +63,9 @@ HOP        = 512
 TARGET_LEN = 173  # ~4s à 22.05 kHz avec hop 512 (ajuste si besoin)
 
 # --- Hyperparams train ---
-BATCH_SIZE = 64
-EPOCHS     = 8
-LR         = 5e-4
+BATCH_SIZE = 16
+EPOCHS     = 20
+LR         = 1e-3
 SEED       = 42
 
 # --- Nombre de classes : inféré depuis le CSV (override possible par env) ---

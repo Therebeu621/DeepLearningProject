@@ -1,5 +1,7 @@
+import argparse
 import shutil
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 
@@ -7,12 +9,22 @@ from .config import CSV_PATH, AUDIO_DIR, SUBSET_DIR
 from .data_utils import resolve_audio_path
 
 # Laisse vide pour choisir automatiquement les classes les plus fréquentes.
-TARGET_CLASSES = []
-N_PER_CLASS = 100
-MAX_CLASSES = 3
+TARGET_CLASSES: List[str] = [
+    "01_gunshot",
+    "03_moped_alarm",
+    "04_moped",
+    "05_claxon",
+    "06_car_door",
+    "07_loud_people",
+    "08_motor_cycle",
+    "09_terrace_noise",
+    "10_music",
+]
+MAX_CLASSES = 9
 
 
-def _select_classes(df: pd.DataFrame) -> list[str]:
+def _select_classes(df: pd.DataFrame) -> List[str]:
+    """Retourne les classes à inclure dans le subset."""
     unique = df["class"].unique().tolist()
     if TARGET_CLASSES:
         selected = [c for c in TARGET_CLASSES if c in unique]
@@ -26,7 +38,8 @@ def _select_classes(df: pd.DataFrame) -> list[str]:
     )
 
 
-def main():
+def main(n_per_class: int = 200):
+    """Génère un subset équilibré en copiant les wavs nécessaires."""
     df = pd.read_csv(CSV_PATH)
     classes = _select_classes(df)
     if not classes:
@@ -35,7 +48,7 @@ def main():
     sub = (
         df[df["class"].isin(classes)]
         .groupby("class", group_keys=False)
-        .apply(lambda d: d.sample(min(N_PER_CLASS, len(d)), random_state=42))
+        .apply(lambda d: d.sample(min(n_per_class, len(d)), random_state=42))
         .reset_index(drop=True)
     )
 
@@ -57,4 +70,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Créer un subset UrbanSound.")
+    parser.add_argument(
+        "--n-per-class",
+        type=int,
+        default=200,
+        help="Nombre maximum d'échantillons par classe.",
+    )
+    args = parser.parse_args()
+    main(n_per_class=args.n_per_class)

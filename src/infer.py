@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 import pandas as pd
 import torch
@@ -43,10 +44,13 @@ def _load_labels_for_checkpoint(n_classes: int, saved_mapping=None):
     return labels
 
 
-def predict_one(wav_path: Path, weights: str = "weights/urbansound_cnn.pt", labels=None):
-    x = wav_to_logmel(wav_path).unsqueeze(0)  # [1, n_mels, T]
+def predict_one(wav_path: Path, weights: Path, labels=None):
+    """
+    Charge un wav et affiche la prédiction top-1 + top-k.
+    """
+    x = wav_to_logmel(wav_path, train_mode=False).unsqueeze(0)  # [1, n_mels, T]
 
-    state, saved_mapping = _load_state(Path(weights))
+    state, saved_mapping = _load_state(weights)
     n_classes = state["head.1.weight"].shape[0]
 
     if labels is None:
@@ -77,27 +81,41 @@ def predict_one(wav_path: Path, weights: str = "weights/urbansound_cnn.pt", labe
         print(f"  {rank}. {name} — p={score:.2f}")
 
 
-if __name__ == "__main__":
-    example = None
+def _default_example() -> Path:
     subset_dir = Path("data/subset")
     if subset_dir.exists():
         for p in subset_dir.glob("*.wav"):
-            example = p
-            break
+            return p
 
-    if example is None:
-        meta_candidates = [
-            SUBSET_DIR / "subset_meta.csv",
-            CSV_PATH,
-        ]
-        for meta_path in meta_candidates:
-            if meta_path.exists():
-                meta = pd.read_csv(meta_path)
-                if not meta.empty:
-                    example = resolve_audio_path(meta.iloc[0], AUDIO_DIR)
-                    break
+    meta_candidates = [
+        SUBSET_DIR / "subset_meta.csv",
+        CSV_PATH,
+    ]
+    for meta_path in meta_candidates:
+        if meta_path.exists():
+            meta = pd.read_csv(meta_path)
+            if not meta.empty:
+                return resolve_audio_path(meta.iloc[0], AUDIO_DIR)
+    raise FileNotFoundError("Aucun wav accessible. Fournis --wav PATH.")
 
-    if example is None:
-        raise FileNotFoundError("Aucun wav accessible. Fourni un chemin à predict_one().")
 
-    predict_one(example)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Inférence sur un fichier UrbanSound.")
+    parser.add_argument("--wav", type=str, help="Chemin vers un fichier .wav à prédire.")
+    parser.add_argument(
+        "--weights",
+        type=str,
+        default="weights/urbansound_cnn.pt",
+        help="Chemin vers le checkpoint torch à utiliser.",
+    )
+    args = parser.parse_args()
+
+    wav_path = Path(args.wav) if args.wav else _default_example()
+    if not wav_path.exists():
+        raise FileNotFoundError(f"Fichier wav introuvable: {wav_path}")
+
+    weights_path = Path(args.weights)
+    if not weights_path.exists():
+        raise FileNotFoundError(f"Checkpoint introuvable: {weights_path}")
+
+    predict_one(wav_path, weights=weights_path)
