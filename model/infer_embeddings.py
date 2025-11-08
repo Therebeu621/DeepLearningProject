@@ -31,8 +31,7 @@ def _normalize(x, mean, scale):
     return (x - mean) / scale
 
 
-def _extract_embedding(model, wav_path: Path):
-    device = torch.device("cpu")
+def _extract_embedding(model, wav_path: Path, device: torch.device):
     target_len_samples = int(TARGET_SR * TARGET_LEN)
 
     waveform, sr = sf.read(wav_path, always_2d=False)
@@ -71,7 +70,9 @@ def _load_head(weights_path: Path):
         state = torch.load(weights_path, map_location="cpu")
         from .train_embeddings import MLPHead
 
-        model = MLPHead(state["input_dim"], len(state["classes"]))
+        hidden_dim = state.get("hidden_dim", 256)
+        dropout = state.get("dropout", 0.2)
+        model = MLPHead(state["input_dim"], len(state["classes"]), hidden_dim=hidden_dim, dropout=dropout)
         model.load_state_dict(state["state_dict"])
         model.eval()
         mean, scale = np.array(state["scaler_mean"]), np.array(state["scaler_scale"])
@@ -83,8 +84,8 @@ def _load_head(weights_path: Path):
 
 def predict(wav_path: Path, weights_path: Path):
     model_type, head, mean, scale, classes = _load_head(weights_path)
-    backbone = _load_backbone()
-    emb = _extract_embedding(backbone, wav_path)
+    backbone, backbone_device = _load_backbone()
+    emb = _extract_embedding(backbone, wav_path, backbone_device)
     emb = _normalize(emb, mean, scale)
 
     if model_type == "logreg":

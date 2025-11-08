@@ -22,7 +22,7 @@ def _load_state(weights_path: Path):
     return state, class_to_idx
 
 
-def _load_labels_for_checkpoint(n_classes: int, saved_mapping=None):
+def _load_labels_for_checkpoint(n_classes: int, saved_mapping=None, use_subset: bool = True):
     """
     Essaie d'inférer l'ordre des labels (noms lisibles) depuis le checkpoint
     ou, à défaut, depuis les métadonnées.
@@ -32,7 +32,7 @@ def _load_labels_for_checkpoint(n_classes: int, saved_mapping=None):
         return [idx_to_name[i] for i in range(n_classes) if i in idx_to_name]
 
     subset_meta = SUBSET_DIR / "subset_meta.csv"
-    if subset_meta.exists():
+    if use_subset and subset_meta.exists():
         meta = pd.read_csv(subset_meta)
     else:
         meta = pd.read_csv(CSV_PATH)
@@ -44,7 +44,7 @@ def _load_labels_for_checkpoint(n_classes: int, saved_mapping=None):
     return labels
 
 
-def predict_one(wav_path: Path, weights: Path, labels=None):
+def predict_one(wav_path: Path, weights: Path, labels=None, use_subset: bool = True):
     """
     Charge un wav et affiche la prédiction top-1 + top-k.
     """
@@ -54,7 +54,7 @@ def predict_one(wav_path: Path, weights: Path, labels=None):
     n_classes = state["head.1.weight"].shape[0]
 
     if labels is None:
-        labels = _load_labels_for_checkpoint(n_classes, saved_mapping)
+        labels = _load_labels_for_checkpoint(n_classes, saved_mapping, use_subset=use_subset)
 
     model = SimpleCNN(n_classes=n_classes).to(DEVICE)
     model.load_state_dict(state, strict=True)
@@ -81,9 +81,9 @@ def predict_one(wav_path: Path, weights: Path, labels=None):
         print(f"  {rank}. {name} — p={score:.2f}")
 
 
-def _default_example() -> Path:
+def _default_example(use_subset: bool = True) -> Path:
     subset_dir = Path("data/subset")
-    if subset_dir.exists():
+    if use_subset and subset_dir.exists():
         for p in subset_dir.glob("*.wav"):
             return p
 
@@ -108,9 +108,15 @@ if __name__ == "__main__":
         default="weights/urbansound_cnn.pt",
         help="Chemin vers le checkpoint torch à utiliser.",
     )
+    parser.add_argument(
+        "--no-subset",
+        action="store_false",
+        dest="use_subset",
+        help="Forcer l'utilisation du dataset complet (ignore data/subset).",
+    )
     args = parser.parse_args()
 
-    wav_path = Path(args.wav) if args.wav else _default_example()
+    wav_path = Path(args.wav) if args.wav else _default_example(use_subset=args.use_subset)
     if not wav_path.exists():
         raise FileNotFoundError(f"Fichier wav introuvable: {wav_path}")
 
@@ -118,4 +124,4 @@ if __name__ == "__main__":
     if not weights_path.exists():
         raise FileNotFoundError(f"Checkpoint introuvable: {weights_path}")
 
-    predict_one(wav_path, weights=weights_path)
+    predict_one(wav_path, weights=weights_path, use_subset=args.use_subset)

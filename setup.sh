@@ -68,39 +68,72 @@ echo "⬆️  Dépendances..."
 pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 
-echo "🎧 Téléchargement du mini-dataset HuggingFace..."
-pip install --no-cache-dir --upgrade huggingface_hub hf-transfer
-export HF_HUB_ENABLE_HF_TRANSFER=1
-export HF_HUB_DISABLE_XET=1
-python scripts/download_mini_dataset.py
+if [ "${SKIP_MINI_DATASET:-0}" != "1" ]; then
+  echo "🎧 Téléchargement du mini-dataset HuggingFace..."
+  pip install --no-cache-dir --upgrade huggingface_hub hf-transfer
+  export HF_HUB_ENABLE_HF_TRANSFER=1
+  export HF_HUB_DISABLE_XET=1
+  python scripts/download_mini_dataset.py
 
-echo "🗂️  Génération du CSV..."
-python scripts/generate_csv.py
+  echo "🗂️  Génération du CSV..."
+  python scripts/generate_csv.py
+else
+  echo "⏭️  SKIP_MINI_DATASET=1 → on saute la récupération du mini-dataset."
+fi
 
-# Assure que les modules src soient trouvables
+if [ "${USE_FULL_URBAN:-0}" = "1" ]; then
+  echo "🎧 Téléchargement UrbanSound8K complet (USE_FULL_URBAN=1)..."
+  python scripts/download_urbansound8k.py
+fi
+
+# Assure que les modules du package soient trouvables
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
-[ -f src/__init__.py ] || : > src/__init__.py
 
-# Variable pour le dataset
-export URBAN_SOUND_ROOT="$PWD/data/urban_sounds_small/urban_sounds_small"
+# Variable pour le dataset (full > mini)
+if [ -d "$PWD/data/UrbanSound8K/audio" ]; then
+  export URBAN_SOUND_ROOT="$PWD/data/UrbanSound8K"
+else
+  export URBAN_SOUND_ROOT="$PWD/data/urban_sounds_small/urban_sounds_small"
+fi
 
 echo "🧪 Vérification des données..."
-python -m src.check_data
+python -m model.check_data
 
 echo "✂️  Création d'un subset..."
-python -m src.make_subset || true
+python -m model.make_subset || true
 
 echo "🏋️  Entraînement..."
-python -m src.train
-
-# Crée un lien symbolique vers les poids
-mkdir -p weights
-ln -sfn "$PWD/weights" "$PWD/DeepLearningProject/weights" || true
+TRAIN_ARGS=()
+if [ "${USE_FULL_URBAN:-0}" = "1" ]; then
+  TRAIN_ARGS+=(--no-subset)
+fi
+if [ "${USE_STRONG_AUG:-0}" = "1" ]; then
+  TRAIN_ARGS+=(--aug-time --aug-noise --aug-spec)
+fi
+if [ "${#TRAIN_ARGS[@]}" -eq 0 ]; then
+  python -m model.train
+else
+  python -m model.train "${TRAIN_ARGS[@]}"
+fi
 
 echo "🧮 Évaluation..."
-python -m src.evaluate
+EVAL_ARGS=()
+if [ "${USE_FULL_URBAN:-0}" = "1" ]; then
+  EVAL_ARGS+=(--no-subset)
+fi
+if [ "${#EVAL_ARGS[@]}" -eq 0 ]; then
+  python -m model.evaluate
+else
+  python -m model.evaluate "${EVAL_ARGS[@]}"
+fi
 
 echo "🔎 Inférence..."
-python -m src.infer
+python -m model.infer
+
+if [ "${RUN_EMB_BASELINE:-0}" = "1" ]; then
+  echo "📈 Baseline embeddings (RUN_EMB_BASELINE=1)..."
+  python -m model.precompute_embeddings
+  python -m model.train_embeddings --model logreg
+fi
 
 echo "✅ Installation et exécution terminées avec succès !"

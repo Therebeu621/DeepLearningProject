@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 
 import numpy as np, pandas as pd, torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch import nn
 from tqdm import tqdm
 
@@ -134,7 +134,11 @@ def main(
     )
     val_ds = US8KDataset(val_df, AUDIO_DIR, train_mode=False)
 
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
+    class_counts = train_df["classID"].value_counts().to_dict()
+    sample_weights = train_df["classID"].map(lambda cls: 1.0 / class_counts[int(cls)]).tolist()
+    sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+
+    train_dl = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, shuffle=False, num_workers=0)
     val_dl   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
 
     model = SimpleCNN(n_classes=len(class_to_idx)).to(DEVICE)

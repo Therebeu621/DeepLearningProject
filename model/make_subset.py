@@ -20,14 +20,15 @@ TARGET_CLASSES: List[str] = [
     "09_terrace_noise",
     "10_music",
 ]
-MAX_CLASSES = 9
+MAX_CLASSES = 10
 
 
-def _select_classes(df: pd.DataFrame) -> List[str]:
+def _select_classes(df: pd.DataFrame, override: List[str] | None = None) -> List[str]:
     """Retourne les classes à inclure dans le subset."""
+    candidates = override if override else TARGET_CLASSES
     unique = df["class"].unique().tolist()
-    if TARGET_CLASSES:
-        selected = [c for c in TARGET_CLASSES if c in unique]
+    if candidates:
+        selected = [c for c in candidates if c in unique]
         if selected:
             return selected
     return (
@@ -38,15 +39,15 @@ def _select_classes(df: pd.DataFrame) -> List[str]:
     )
 
 
-def main(n_per_class: int = 200):
+def main(n_per_class: int = 200, classes: List[str] | None = None):
     """Génère un subset équilibré en copiant les wavs nécessaires."""
     df = pd.read_csv(CSV_PATH)
-    classes = _select_classes(df)
-    if not classes:
+    selected = _select_classes(df, override=classes)
+    if not selected:
         raise ValueError("Aucune classe disponible pour créer le subset.")
 
     sub = (
-        df[df["class"].isin(classes)]
+        df[df["class"].isin(selected)]
         .groupby("class", group_keys=False)
         .apply(lambda d: d.sample(min(n_per_class, len(d)), random_state=42))
         .reset_index(drop=True)
@@ -77,5 +78,13 @@ if __name__ == "__main__":
         default=200,
         help="Nombre maximum d'échantillons par classe.",
     )
+    parser.add_argument(
+        "--classes",
+        type=str,
+        help="Liste de classes séparées par des virgules. Défaut: TARGET_CLASSES ou classes les plus fréquentes.",
+    )
     args = parser.parse_args()
-    main(n_per_class=args.n_per_class)
+    class_list = None
+    if args.classes:
+        class_list = [c.strip() for c in args.classes.split(",") if c.strip()]
+    main(n_per_class=args.n_per_class, classes=class_list)

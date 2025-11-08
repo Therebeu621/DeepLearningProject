@@ -75,28 +75,38 @@ def _plot_confusion(cm, labels, path, title, normalize=False):
 
 
 class MLPHead(nn.Module):
-    def __init__(self, in_dim, num_classes):
+    def __init__(self, in_dim, num_classes, hidden_dim=256, dropout=0.2):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(in_dim, 256),
+            nn.Linear(in_dim, hidden_dim),
             nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(256, num_classes),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, num_classes),
         )
 
     def forward(self, x):
         return self.net(x)
 
 
-def train_logreg(X_train, y_train):
-    model = LogisticRegression(max_iter=2000, solver="liblinear", multi_class="ovr")
+def train_logreg(X_train, y_train, max_iter=2000):
+    model = LogisticRegression(max_iter=max_iter, solver="liblinear", multi_class="ovr")
     model.fit(X_train, y_train)
     return model
 
 
-def train_mlp(X_train, y_train, X_val, y_val, num_classes, epochs=200, patience=20):
+def train_mlp(
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    num_classes,
+    hidden_dim=256,
+    dropout=0.2,
+    epochs=200,
+    patience=20,
+):
     device = torch.device("cpu")
-    model = MLPHead(X_train.shape[1], num_classes).to(device)
+    model = MLPHead(X_train.shape[1], num_classes, hidden_dim=hidden_dim, dropout=dropout).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.CrossEntropyLoss()
 
@@ -147,7 +157,14 @@ def train_mlp(X_train, y_train, X_val, y_val, num_classes, epochs=200, patience=
     return model
 
 
-def main(model_type: str):
+def main(
+    model_type: str,
+    hidden_dim: int,
+    dropout: float,
+    mlp_epochs: int,
+    mlp_patience: int,
+    logreg_max_iter: int,
+):
     X, y, folds, classes = _load_embeddings()
     train_idx, val_idx = _train_val_split(folds, y)
 
@@ -162,12 +179,22 @@ def main(model_type: str):
     WEIGHTS_DIR.mkdir(exist_ok=True)
 
     if model_type == "logreg":
-        model = train_logreg(X_train, y_train)
+        model = train_logreg(X_train, y_train, max_iter=logreg_max_iter)
         y_pred = model.predict(X_val)
         weights_path = WEIGHTS_DIR / "linear_head.pkl"
         joblib.dump({"model": model, "scaler_mean": scaler.mean_, "scaler_scale": scaler.scale_, "classes": classes}, weights_path)
     else:
-        mlp = train_mlp(X_train, y_train, X_val, y_val, num_classes=len(classes))
+        mlp = train_mlp(
+            X_train,
+            y_train,
+            X_val,
+            y_val,
+            num_classes=len(classes),
+            hidden_dim=hidden_dim,
+            dropout=dropout,
+            epochs=mlp_epochs,
+            patience=mlp_patience,
+        )
         with torch.no_grad():
             logits = mlp(torch.from_numpy(X_val).float())
             y_pred = torch.argmax(logits, dim=1).numpy()
@@ -179,6 +206,8 @@ def main(model_type: str):
                 "scaler_scale": scaler.scale_,
                 "classes": classes,
                 "input_dim": X.shape[1],
+                "hidden_dim": hidden_dim,
+                "dropout": dropout,
             },
             weights_path,
         )
@@ -212,5 +241,17 @@ def main(model_type: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train classifier on precomputed embeddings")
     parser.add_argument("--model", choices=["logreg", "mlp"], default="logreg", help="Type de tête de classification")
+    parser.add_argument("--hidden-dim", type=int, default=256, help="Nombre de neurones cachés pour le MLP.")
+    parser.add_argument("--dropout", type=float, default=0.2, help="Dropout appliqué dans le MLP.")
+    parser.add_argument("--mlp-epochs", type=int, default=200, help="Époques MLP (fine-tuning).")
+    parser.add_argument("--mlp-patience", type=int, default=20, help="Patience early stopping pour le MLP.")
+    parser.add_argument("--logreg-max-iter", type=int, default=2000, help="Iterations max pour la régression logistique.")
     args = parser.parse_args()
-    main(args.model)
+    main(
+        args.model,
+        hidden_dim=args.hidden_dim,
+        dropout=args.dropout,
+        mlp_epochs=args.mlp_epochs,
+        mlp_patience=args.mlp_patience,
+        logreg_max_iter=args.logreg_max_iter,
+    )

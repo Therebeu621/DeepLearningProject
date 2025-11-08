@@ -1,3 +1,4 @@
+import argparse
 import json
 from pathlib import Path
 from typing import Tuple
@@ -14,11 +15,12 @@ from .data_utils import resolve_audio_path
 
 
 TARGET_SR = 32000
+TARGET_LEN = 10.0
 
 
-def _load_metadata() -> Tuple[pd.DataFrame, dict, bool]:
+def _load_metadata(use_subset: bool = True) -> Tuple[pd.DataFrame, dict, bool]:
     subset_meta = SUBSET_DIR / "subset_meta.csv"
-    use_subset = subset_meta.exists()
+    use_subset = use_subset and subset_meta.exists()
     df = pd.read_csv(subset_meta if use_subset else CSV_PATH)
 
     if "classID" not in df.columns:
@@ -43,8 +45,8 @@ def _load_backbone():
     return model, device
 
 
-def compute_embeddings():
-    df, class_to_idx, use_subset = _load_metadata()
+def compute_embeddings(use_subset: bool = True):
+    df, class_to_idx, use_subset = _load_metadata(use_subset=use_subset)
     audio_root = SUBSET_DIR if use_subset else AUDIO_DIR
 
     print("Using subset csv" if use_subset else "Using full csv")
@@ -55,9 +57,17 @@ def compute_embeddings():
 
     embeddings, labels, folds = [], [], []
 
+    target_len_samples = int(TARGET_SR * TARGET_LEN)
+
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Embedding", unit="file"):
         wav_path = resolve_audio_path(row, audio_root)
         waveform, _ = librosa.load(wav_path, sr=TARGET_SR, mono=True)
+        if waveform.size == 0:
+            waveform = np.zeros(target_len_samples, dtype=np.float32)
+        if waveform.shape[0] < target_len_samples:
+            waveform = np.pad(waveform, (0, target_len_samples - waveform.shape[0]))
+        elif waveform.shape[0] > target_len_samples:
+            waveform = waveform[:target_len_samples]
         waveform_tensor = torch.tensor(waveform, dtype=torch.float32, device=device).unsqueeze(0)
         with torch.no_grad():
             _, embedding = model.inference(waveform_tensor)
@@ -88,4 +98,12 @@ def compute_embeddings():
 
 
 if __name__ == "__main__":
-    compute_embeddings()
+    parser = argparse.ArgumentParser(description="Pré-calcul des embeddings PANNs.")
+    parser.add_argument(
+        "--no-subset",
+        action="store_false",
+        dest="use_subset",
+        help="Utiliser tout le dataset même si data/subset existe.",
+    )
+    args = parser.parse_args()
+    compute_embeddings(use_subset=args.use_subset)

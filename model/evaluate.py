@@ -1,3 +1,4 @@
+import argparse
 import json
 from pathlib import Path
 
@@ -59,10 +60,10 @@ def _load_state(weights_path: Path):
     return state, class_to_idx
 
 
-def main():
+def main(use_subset: bool = True):
     # 1) Choix du CSV d'évaluation : subset s’il existe, sinon CSV complet
     subset_meta = SUBSET_DIR / "subset_meta.csv"
-    use_subset = subset_meta.exists()
+    use_subset = use_subset and subset_meta.exists()
     meta_path = subset_meta if use_subset else CSV_PATH
 
     meta = pd.read_csv(meta_path)
@@ -227,4 +228,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Évaluation du classifieur UrbanSound.")
+    parser.add_argument(
+        "--no-subset",
+        action="store_false",
+        dest="use_subset",
+        help="Forcer l'évaluation sur le CSV complet même si un subset est présent.",
+    )
+    args = parser.parse_args()
+    main(use_subset=args.use_subset)
