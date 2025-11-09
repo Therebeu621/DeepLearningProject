@@ -90,6 +90,8 @@ def main(
     aug_time: bool = False,
     aug_noise: bool = False,
     aug_spec: bool = False,
+    use_sampler: bool = False,
+    use_class_weights: bool = True,
 ):
     meta = pd.read_csv(CSV_PATH)
     if use_subset and (Path("data/subset/subset_meta.csv").exists()):
@@ -134,21 +136,29 @@ def main(
     )
     val_ds = US8KDataset(val_df, AUDIO_DIR, train_mode=False)
 
-    class_counts = train_df["classID"].value_counts().to_dict()
-    sample_weights = train_df["classID"].map(lambda cls: 1.0 / class_counts[int(cls)]).tolist()
-    sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
-
-    train_dl = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, shuffle=False, num_workers=0)
+    if use_sampler:
+        class_counts = train_df["classID"].value_counts().to_dict()
+        sample_weights = train_df["classID"].map(lambda cls: 1.0 / class_counts[int(cls)]).tolist()
+        sampler = WeightedRandomSampler(sample_weights, num_samples=len(sample_weights), replacement=True)
+        train_dl = DataLoader(train_ds, batch_size=batch_size, sampler=sampler, shuffle=False, num_workers=0)
+        print("Sampler activé : WeightedRandomSampler pour équilibrer les batches.")
+    else:
+        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
     val_dl   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
 
     model = SimpleCNN(n_classes=len(class_to_idx)).to(DEVICE)
 
-    counts = train_df["classID"].value_counts().reindex(range(len(class_to_idx)), fill_value=1)
-    weights = (1.0 / counts.values)
-    weights = weights / weights.sum() * len(class_to_idx)
-    class_weights = torch.tensor(weights, dtype=torch.float32, device=DEVICE)
-    print("Class weights :", weights)
-    loss_fn = nn.CrossEntropyLoss(weight=class_weights)
+    loss_weight_tensor = None
+    if use_class_weights:
+        counts = train_df["classID"].value_counts().reindex(range(len(class_to_idx)), fill_value=1)
+        weights = (1.0 / counts.values)
+        weights = weights / weights.sum() * len(class_to_idx)
+        loss_weight_tensor = torch.tensor(weights, dtype=torch.float32, device=DEVICE)
+        print("Class weights :", weights)
+    else:
+        print("Class weights désactivés (CrossEntropyLoss standard).")
+
+    loss_fn = nn.CrossEntropyLoss(weight=loss_weight_tensor)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
 
@@ -192,6 +202,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train UrbanSound8K classifier.")
+    parser.set_defaults(aug_time=False, aug_noise=False, aug_spec=False)
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Nombre d'époques d'entraînement.")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Taille de batch.")
     parser.add_argument("--lr", type=float, default=LR, help="Taux d'apprentissage.")
@@ -201,9 +212,22 @@ if __name__ == "__main__":
         dest="use_subset",
         help="Utiliser le CSV complet même si un subset est présent.",
     )
-    parser.add_argument("--aug-time", action="store_true", help="Active le time-shift aléatoire.")
-    parser.add_argument("--aug-noise", action="store_true", help="Ajoute un bruit gaussien léger (σ 0.005→0.02).")
-    parser.add_argument("--aug-spec", action="store_true", help="Applique un SpecAugment (masques temps/fréquence).")
+    parser.add_argument("--aug-time", action="store_true", dest="aug_time", help="Active le time-shift aléatoire.")
+    parser.add_argument("--no-aug-time", action="store_false", dest="aug_time", help="Désactive explicitement le time-shift.")
+    parser.add_argument("--aug-noise", action="store_true", dest="aug_noise", help="Ajoute un bruit gaussien léger (σ 0.005→0.02).")
+    parser.add_argument("--no-aug-noise", action="store_false", dest="aug_noise", help="Désactive l'ajout de bruit.")
+    parser.add_argument("--aug-spec", action="store_true", dest="aug_spec", help="Applique un SpecAugment (masques temps/fréquence).")
+    parser.add_argument("--no-aug-spec", action="store_false", dest="aug_spec", help="Désactive le SpecAugment.")
+    parser.add_argument(
+        "--use-sampler",
+        action="store_true",
+        help="Active un WeightedRandomSampler pour équilibrer les batches d'entraînement.",
+    )
+    parser.add_argument(
+        "--no-class-weights",
+        action="store_true",
+        help="Désactive les poids de classes dans la CrossEntropy (par défaut actifs).",
+    )
     args = parser.parse_args()
     main(
         use_subset=args.use_subset,
@@ -213,4 +237,6 @@ if __name__ == "__main__":
         aug_time=args.aug_time,
         aug_noise=args.aug_noise,
         aug_spec=args.aug_spec,
+        use_sampler=args.use_sampler,
+        use_class_weights=not args.no_class_weights,
     )
