@@ -45,9 +45,7 @@ fi
 echo "✅ UrbanSound8K détecté (metadata + audio)."
 
 # 5) Entraînement
-python -m model.train --epochs 15 --batch-size 32 \
-  --no-subset --use-sampler --aug-spec \
-  --lr 3e-4
+python -m model.train --epochs 15 --batch-size 32 --no-subset --use-sampler --aug-spec --lr 3e-4
 
 # 6) Évaluation
 python -m model.evaluate --no-subset
