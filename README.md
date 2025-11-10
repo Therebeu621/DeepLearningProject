@@ -12,6 +12,45 @@
 python -m model.evaluate --no-subset
 
 
+## Pour tester avec interface
+
+Prérequis :
+
+    source .venv/bin/activate
+    pip install gradio openai
+
+Terminal 1 : Serveur MCP (Modèle Spécialiste)
+
+Charge le modèle PyTorch et le sert via l'API.
+Bash
+
+    source .venv/bin/activate
+    uvicorn mcp_server.server:app --port 8000
+
+Terminal 2 : Serveur LLM (LM Studio)
+
+Charge le modèle de langue pour le dialogue.
+
+    Ouvrez LM Studio.
+
+    Chargez un modèle (ex: Mistral 7B).
+
+    Allez à l'onglet Serveur (</>) et cliquez sur "Start Server".
+
+ Terminal 3 : Interface Web (Gradio)
+
+Lance l'application web qui connecte les deux serveurs.
+Bash
+
+    source .venv/bin/activate
+    python app_gradio.py
+
+
+Ouvrez votre navigateur et allez à l'URL affichée dans le Terminal 3 :
+
+    http://127.0.0.1:7860
+ 
+
 ## 1) Introduction
 SonicWatch est un chatbot audio spécialisé qui identifie les bruits urbains à partir d’un fichier WAV.  
 Architecture : un CNN PyTorch entraîné sur UrbanSound8K + un LLM local (LM Studio) connecté via un serveur MCP FastAPI qui effectue l’inférence et renvoie les top‑k probabilités.
