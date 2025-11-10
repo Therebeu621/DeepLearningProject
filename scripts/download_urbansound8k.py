@@ -92,7 +92,7 @@ def main():
             raise SystemExit(f"Archive manquante: {archive}")
         print("ℹ️  Téléchargement sauté (option --skip-download).")
 
-    if args.skip-extract:
+    if args.skip_extract:
         print("ℹ️  Extraction sautée (option --skip-extract).")
         return
 

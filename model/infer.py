@@ -44,7 +44,7 @@ def _load_labels_for_checkpoint(n_classes: int, saved_mapping=None, use_subset: 
     return labels
 
 
-def predict_one(wav_path: Path, weights: Path, labels=None, use_subset: bool = True):
+def predict_one(wav_path: Path, weights: Path, labels=None, use_subset: bool = True, topk: int = 3):
     """
     Charge un wav et affiche la prédiction top-1 + top-k.
     """
@@ -70,7 +70,7 @@ def predict_one(wav_path: Path, weights: Path, labels=None, use_subset: bool = T
     else:
         print(f"Pred classID: {idx} (p={probs[idx]:.2f})")
 
-    k = min(3, len(probs))
+    k = min(topk, len(probs))
     topk = torch.topk(torch.from_numpy(probs), k)
     print("Top-k:")
     for rank, (score, class_idx) in enumerate(zip(topk.values.tolist(), topk.indices.tolist()), start=1):
@@ -109,6 +109,12 @@ if __name__ == "__main__":
         help="Chemin vers le checkpoint torch à utiliser.",
     )
     parser.add_argument(
+        "--topk",
+        type=int,
+        default=3,
+        help="Nombre de classes à afficher dans le Top-k (défaut 3).",
+    )
+    parser.add_argument(
         "--no-subset",
         action="store_false",
         dest="use_subset",
@@ -124,4 +130,4 @@ if __name__ == "__main__":
     if not weights_path.exists():
         raise FileNotFoundError(f"Checkpoint introuvable: {weights_path}")
 
-    predict_one(wav_path, weights=weights_path, use_subset=args.use_subset)
+    predict_one(wav_path, weights=weights_path, use_subset=args.use_subset, topk=args.topk)

@@ -68,72 +68,29 @@ echo "⬆️  Dépendances..."
 pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 
-if [ "${SKIP_MINI_DATASET:-0}" != "1" ]; then
-  echo "🎧 Téléchargement du mini-dataset HuggingFace..."
-  pip install --no-cache-dir --upgrade huggingface_hub hf-transfer
-  export HF_HUB_ENABLE_HF_TRANSFER=1
-  export HF_HUB_DISABLE_XET=1
-  python scripts/download_mini_dataset.py
-
-  echo "🗂️  Génération du CSV..."
-  python scripts/generate_csv.py
-else
-  echo "⏭️  SKIP_MINI_DATASET=1 → on saute la récupération du mini-dataset."
-fi
-
-if [ "${USE_FULL_URBAN:-0}" = "1" ]; then
-  echo "🎧 Téléchargement UrbanSound8K complet (USE_FULL_URBAN=1)..."
+# Téléchargement UrbanSound8K complet si absent
+export URBAN_SOUND_ROOT="$PWD/data/UrbanSound8K"
+META="$URBAN_SOUND_ROOT/metadata/UrbanSound8K.csv"
+if [ ! -f "$META" ] || [ ! -d "$URBAN_SOUND_ROOT/audio" ]; then
+  echo "🎧 Téléchargement UrbanSound8K complet..."
   python scripts/download_urbansound8k.py
 fi
+if [ ! -f "$META" ] || [ ! -d "$URBAN_SOUND_ROOT/audio" ]; then
+  echo "❌ Dataset UrbanSound8K incomplet après téléchargement. Vérifie data/UrbanSound8K/." >&2
+  exit 1
+fi
+echo "✅ UrbanSound8K détecté."
 
 # Assure que les modules du package soient trouvables
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 
-# Variable pour le dataset (full > mini)
-if [ -d "$PWD/data/UrbanSound8K/audio" ]; then
-  export URBAN_SOUND_ROOT="$PWD/data/UrbanSound8K"
-else
-  export URBAN_SOUND_ROOT="$PWD/data/urban_sounds_small/urban_sounds_small"
-fi
-
-echo "🧪 Vérification des données..."
-python -m model.check_data
-
-echo "✂️  Création d'un subset..."
-python -m model.make_subset || true
-
-echo "🏋️  Entraînement..."
-TRAIN_ARGS=()
-if [ "${USE_FULL_URBAN:-0}" = "1" ]; then
-  TRAIN_ARGS+=(--no-subset)
-fi
-if [ "${USE_STRONG_AUG:-0}" = "1" ]; then
-  TRAIN_ARGS+=(--aug-time --aug-noise --aug-spec)
-fi
-if [ "${#TRAIN_ARGS[@]}" -eq 0 ]; then
-  python -m model.train
-else
-  python -m model.train "${TRAIN_ARGS[@]}"
-fi
+echo "🏋️  Entraînement (full UrbanSound8K)..."
+python -m model.train --epochs 15 --batch-size 32 \
+  --no-subset --use-sampler --aug-spec \
+  --lr 3e-4
 
 echo "🧮 Évaluation..."
-EVAL_ARGS=()
-if [ "${USE_FULL_URBAN:-0}" = "1" ]; then
-  EVAL_ARGS+=(--no-subset)
-fi
-if [ "${#EVAL_ARGS[@]}" -eq 0 ]; then
-  python -m model.evaluate
-else
-  python -m model.evaluate "${EVAL_ARGS[@]}"
-fi
+python -m model.evaluate --no-subset
 
-echo "🔎 Inférence..."
-python -m model.infer
-
-if [ "${RUN_EMB_BASELINE:-0}" = "1" ]; then
-  echo "📈 Baseline embeddings (RUN_EMB_BASELINE=1)..."
-  python -m model.precompute_embeddings
-  python -m model.train_embeddings --model logreg
-fi
-
-echo "✅ Installation et exécution terminées avec succès !"
+echo "⚙️  Démarrage du serveur MCP..."
+uvicorn mcp_server.server:app --host 127.0.0.1 --port 8000

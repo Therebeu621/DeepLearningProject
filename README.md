@@ -8,6 +8,10 @@
 > 3. `python chatbot/orchestrator_lmstudio.py` pour discuter avec SonicWatch via le LLM.  
 > 4. Tester : `Écoute le son data/subset/shot556_29_ch01_180718_162104_16_.wav et dis-moi ce que c’est`
 
+## Evaluer le modele 
+python -m model.evaluate --no-subset
+
+
 ## 1) Introduction
 SonicWatch est un chatbot audio spécialisé qui identifie les bruits urbains à partir d’un fichier WAV.  
 Architecture : un CNN PyTorch entraîné sur UrbanSound8K + un LLM local (LM Studio) connecté via un serveur MCP FastAPI qui effectue l’inférence et renvoie les top‑k probabilités.
@@ -115,4 +119,4 @@ curl -s http://127.0.0.1:8000/health
 
 ## 12) Licence & Auteurs
 - UrbanSound8K : © Maguire et al., disponible via https://urbansounddataset.weebly.com/urbansound8k.html  
-- Projet SonicWatch par [Ton nom], usage pédagogique.
+- Projet SonicWatch, usage pédagogique.
