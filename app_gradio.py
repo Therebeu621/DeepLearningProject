@@ -109,19 +109,37 @@ def respond(message, chat_history):
     except Exception as e:
         return f"Erreur de connexion au LLM (LM Studio): {e}"
 
+
+def analyze_uploaded_audio(audio_filepath):
+    if not audio_filepath:
+        return gr.update(), gr.update()
+    message = f"Analyse ce fichier: {audio_filepath}"
+    reply = respond(message, [])
+    history = [(message, reply)]
+    return history, history
+
 # --- Launch the Web Interface ---
 if __name__ == "__main__":
-    # gr.ChatInterface launches a full "ChatGPT-like" UI
-    demo = gr.ChatInterface(
-        fn=respond,
-        title="SonicWatch 🎧",
-        description="Posez-moi des questions sur les sons. Pour analyser un fichier, donnez-moi son chemin (ex: data/subset/...).",
-        examples=[
-            ["Quelles sont les métriques du modèle ?"],
-            ["Donne-moi la liste des rapports."],
-            ["Analyse ce fichier: data/subset/shot556_29_ch01_180718_162104_16_.wav"]
-        ]
-    )
-    
-    # launch() creates the public web server
+    with gr.Blocks() as demo:
+        chat = gr.ChatInterface(
+            fn=respond,
+            title="SonicWatch 🎧",
+            description="Posez-moi des questions sur les sons. Pour analyser un fichier, donnez-moi son chemin (ex: data/subset/...).",
+            examples=[
+                ["Quelles sont les métriques du modèle ?"],
+                ["Donne-moi la liste des rapports."],
+                ["Analyse ce fichier: data/subset/shot556_29_ch01_180718_162104_16_.wav"]
+            ]
+        )
+
+        with gr.Row():
+            audio_input = gr.Audio(label="Uploader un WAV", type="filepath")
+            analyze_btn = gr.Button("Analyser ce fichier")
+
+        analyze_btn.click(
+            fn=analyze_uploaded_audio,
+            inputs=audio_input,
+            outputs=[chat.chatbot, chat.chatbot_state]
+        )
+
     demo.launch(share=False) # Set share=True to get a public link
