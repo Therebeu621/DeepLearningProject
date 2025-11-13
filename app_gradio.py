@@ -118,9 +118,28 @@ def analyze_uploaded_audio(audio_filepath):
     history = [(message, reply)]
     return history, history
 
+
+def handle_audio_upload(uploaded_files):
+    if not uploaded_files:
+        return None, "Aucun fichier sélectionné."
+    file_obj = (
+        uploaded_files[0]
+        if isinstance(uploaded_files, (list, tuple))
+        else uploaded_files
+    )
+    filepath = getattr(file_obj, "name", None) or (
+        file_obj if isinstance(file_obj, str) else None
+    )
+    if not filepath:
+        return None, "Aucun fichier sélectionné."
+    filename = Path(filepath).name
+    return filepath, f"Fichier prêt : {filename}"
+
 # --- Launch the Web Interface ---
 if __name__ == "__main__":
     with gr.Blocks() as demo:
+        selected_audio = gr.State(None)
+
         chat = gr.ChatInterface(
             fn=respond,
             title="SonicWatch 🎧",
@@ -132,13 +151,32 @@ if __name__ == "__main__":
             ]
         )
 
+        gr.Markdown("### 🔊 Analyser un fichier audio (upload)")
+
         with gr.Row():
-            audio_input = gr.Audio(label="Uploader un WAV", type="filepath")
-            analyze_btn = gr.Button("Analyser ce fichier")
+            with gr.Column(scale=3):
+                upload_status = gr.Markdown(
+                    "Aucun fichier sélectionné.",
+                    elem_id="upload-status",
+                )
+                audio_input = gr.UploadButton(
+                    "Cliquez pour uploader un fichier audio",
+                    file_types=["audio"],
+                    size="md",
+                    scale=1,
+                    min_width=0,
+                )
+            analyze_btn = gr.Button("Analyser ce fichier", scale=1)
+
+        audio_input.upload(
+            fn=handle_audio_upload,
+            inputs=audio_input,
+            outputs=[selected_audio, upload_status],
+        )
 
         analyze_btn.click(
             fn=analyze_uploaded_audio,
-            inputs=audio_input,
+            inputs=selected_audio,
             outputs=[chat.chatbot, chat.chatbot_state]
         )
 
