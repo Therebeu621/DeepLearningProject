@@ -399,9 +399,9 @@ if __name__ == "__main__":
                     fn=respond,
                     examples=[
                         ["📊 Quelles sont les métriques du modèle CNN ?"],
-                        ["⚖️ Compare les performances CNN vs embeddings"],
                         ["📈 Liste les rapports visuels disponibles"],
                         ["🎵 Analyse: data/subset/shot556_29_ch01_180718_162104_16_.wav"],
+                        ["🎵 Analyse: data/subset/O-AS-roos.002.200120.141547.39.wav"],
                     ],
                     chatbot=gr.Chatbot(height=450, elem_classes="chatbot-container"),
                     textbox=gr.Textbox(placeholder="💬 Posez votre question...", scale=7)
