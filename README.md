@@ -1,7 +1,5 @@
 # SonicWatch – UrbanSound8K
 
-# SonicWatch – UrbanSound8K
-
 > **Démarrage rapide**
 > 1. `bash scripts/setup_and_run.sh` (installe, entraîne, évalue, lance le serveur MCP).  
 > 2. Ouvre LM Studio, charge ton modèle (ex. `mistralai/mistral-7b-instruct-v0.3`) et démarre le serveur local (http://127.0.0.1:1234).  
@@ -156,6 +154,6 @@ curl -s http://127.0.0.1:8000/health
     weights/       # checkpoints
   ```
 
-## 12) Licence & Auteurs
-- UrbanSound8K : © Maguire et al., disponible via https://urbansounddataset.weebly.com/urbansound8k.html  
-- Projet SonicWatch, usage pédagogique.
+## 12) Liens
+- UrbanSound8K :  https://urbansounddataset.weebly.com/urbansound8k.html  
+
