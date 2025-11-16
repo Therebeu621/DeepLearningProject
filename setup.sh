@@ -68,29 +68,15 @@ echo "⬆️  Dépendances..."
 pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 
-# Téléchargement UrbanSound8K complet si absent
-export URBAN_SOUND_ROOT="$PWD/data/UrbanSound8K"
-META="$URBAN_SOUND_ROOT/metadata/UrbanSound8K.csv"
-if [ ! -f "$META" ] || [ ! -d "$URBAN_SOUND_ROOT/audio" ]; then
-  echo "🎧 Téléchargement UrbanSound8K complet..."
-  python scripts/download_urbansound8k.py
-fi
-if [ ! -f "$META" ] || [ ! -d "$URBAN_SOUND_ROOT/audio" ]; then
-  echo "❌ Dataset UrbanSound8K incomplet après téléchargement. Vérifie data/UrbanSound8K/." >&2
-  exit 1
-fi
-echo "✅ UrbanSound8K détecté."
-
 # Assure que les modules du package soient trouvables
 export PYTHONPATH="$PWD:${PYTHONPATH:-}"
 
-echo "🏋️  Entraînement (full UrbanSound8K)..."
-python -m model.train --epochs 15 --batch-size 32 \
-  --no-subset --use-sampler --aug-spec \
-  --lr 3e-4
-
-echo "🧮 Évaluation..."
-python -m model.evaluate --no-subset
+WEIGHTS_PATH="$PWD/weights/urbansound_cnn.pt"
+if [ ! -f "$WEIGHTS_PATH" ]; then
+  echo "❌ Poids pré-entraînés introuvables : $WEIGHTS_PATH"
+  echo "👉 Ajoute ton checkpoint (ex: weights/urbansound_cnn.pt) avant de lancer ce script."
+  exit 1
+fi
 
 echo "⚙️  Démarrage du serveur MCP..."
 uvicorn mcp_server.server:app --host 127.0.0.1 --port 8000
