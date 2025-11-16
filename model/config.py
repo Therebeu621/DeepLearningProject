@@ -1,6 +1,8 @@
 # model/config.py
 from pathlib import Path
+from typing import Optional
 import os
+import warnings
 
 # --- Dossiers projet ---
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -22,16 +24,18 @@ def _candidate_roots():
     yield DATA_DIR / "urban_sounds_small" / "urban_sounds_small"
     yield DATA_DIR / "UrbanSound8K"
 
-URBAN_ROOT = None
-for candidate in _candidate_roots():
-    if candidate.exists():
-        URBAN_ROOT = candidate
-        break
-if URBAN_ROOT is None:
-    raise FileNotFoundError(
-        "Aucune racine de dataset trouvée. "
-        "Définis URBAN_SOUND_ROOT ou place le dataset dans "
-        "data/urban_sounds_small/urban_sounds_small ou data/UrbanSound8K."
+_CANDIDATE_ROOTS = list(_candidate_roots())
+if not _CANDIDATE_ROOTS:
+    _CANDIDATE_ROOTS = [DATA_DIR / "UrbanSound8K"]
+
+URBAN_ROOT = next((c for c in _CANDIDATE_ROOTS if c.exists()), _CANDIDATE_ROOTS[-1])
+HAS_DATASET = URBAN_ROOT.exists()
+
+if not HAS_DATASET:
+    warnings.warn(
+        "Dataset UrbanSound introuvable. "
+        "Certaines commandes (train/evaluate) nécessitent URBAN_SOUND_ROOT.",
+        RuntimeWarning,
     )
 
 # --- Sélection du CSV ---
@@ -41,8 +45,8 @@ CSV_CANDIDATES = (
     URBAN_ROOT / "UrbanSound8K.csv",                 # CSV à la racine
     URBAN_ROOT / "metadata" / "UrbanSound8K.csv",    # CSV dans metadata/
 )
-CSV_PATH = next((p for p in CSV_CANDIDATES if p.exists()), None)
-if CSV_PATH is None:
+CSV_PATH = next((p for p in CSV_CANDIDATES if p.exists()), None) if HAS_DATASET else None
+if HAS_DATASET and CSV_PATH is None:
     raise FileNotFoundError(
         f"Impossible de trouver un CSV (candidats: {', '.join(str(p) for p in CSV_CANDIDATES)})"
     )
@@ -88,7 +92,9 @@ SUBSET_LIMIT = int(os.getenv("SUBSET_LIMIT", 0))  # 0 = pas de limite
 # =========================
 # 🧠 Nombre de classes
 # =========================
-def _infer_num_classes(csv_path: Path) -> int:
+def _infer_num_classes(csv_path: Optional[Path]) -> int:
+    if not csv_path or not csv_path.exists():
+        return 10  # par défaut UrbanSound8K
     try:
         import pandas as pd
         df = pd.read_csv(csv_path)
@@ -103,6 +109,22 @@ def _infer_num_classes(csv_path: Path) -> int:
         return 10
 
 N_CLASSES = int(os.getenv("URBAN_N_CLASSES", _infer_num_classes(CSV_PATH)))
+
+
+def ensure_dataset_available():
+    """
+    À appeler depuis les scripts qui nécessitent la présence physique du dataset.
+    """
+    if not HAS_DATASET:
+        raise FileNotFoundError(
+            "Dataset UrbanSound introuvable. "
+            "Définis URBAN_SOUND_ROOT ou place le dataset dans "
+            "data/urban_sounds_small/urban_sounds_small ou data/UrbanSound8K."
+        )
+    if CSV_PATH is None:
+        raise FileNotFoundError(
+            f"Impossible de trouver un CSV (candidats: {', '.join(str(p) for p in CSV_CANDIDATES)})"
+        )
 
 # =========================
 # 🔎 Inférence

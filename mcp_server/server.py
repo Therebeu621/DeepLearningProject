@@ -50,8 +50,10 @@ def _load_label_names(use_subset: bool) -> List[str]:
     subset_meta = SUBSET_DIR / "subset_meta.csv"
     if use_subset and subset_meta.exists():
         meta = pd.read_csv(subset_meta)
-    else:
+    elif CSV_PATH and CSV_PATH.exists():
         meta = pd.read_csv(CSV_PATH)
+    else:
+        return []
     cat = meta["class"].astype("category").cat
     return list(cat.categories)
 
