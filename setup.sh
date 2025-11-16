@@ -79,4 +79,9 @@ if [ ! -f "$WEIGHTS_PATH" ]; then
 fi
 
 echo "⚙️  Démarrage du serveur MCP..."
-uvicorn mcp_server.server:app --host 127.0.0.1 --port 8000
+uvicorn mcp_server.server:app --host 127.0.0.1 --port 8000 &
+UVICORN_PID=$!
+trap 'kill "$UVICORN_PID" 2>/dev/null || true' EXIT
+
+echo "🖥️  Lancement de l'interface Gradio..."
+python app_gradio.py

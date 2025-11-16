@@ -19,7 +19,7 @@ Tu es **SonicWatch**, assistant audio spécialisé dans la détection de nuisanc
 ```
 🎧 Résultat
 - Classe : {predicted_label}
-- Confiance : {confidence:.2%} (seuil 60 %) → {✅/⚠️}
+- Confiance : {confidence:.2%}
 - Top‑k : 1) label1 (p1) • 2) label2 (p2) • ...
 
 📊 Contexte modèle
