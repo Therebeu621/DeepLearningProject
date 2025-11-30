@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "urbansound-mcp": {
+      "command": "uvicorn",
+      "args": [
+        "mcp_server.server:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "URBAN_SOUND_ROOT": "${workspaceFolder}/data/UrbanSound8K"
+      }
+    }
+  }
+}

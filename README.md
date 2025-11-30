@@ -154,6 +154,61 @@ curl -s http://127.0.0.1:8000/health
     weights/       # checkpoints
   ```
 
-## 12) Liens
-- UrbanSound8K :  https://urbansounddataset.weebly.com/urbansound8k.html  
+## 12) TROUBLESHOOTING
+
+### Chemins de fichiers
+- **Chemins absolus requis** : Le serveur MCP nécessite des chemins absolus pour les fichiers WAV. Exemple : `/home/user/DeepLearningProject/data/subset/shot556_29_ch01_180718_162104_16_.wav`
+- **Chemins relatifs** : Depuis la racine du projet, vous pouvez utiliser : `data/subset/nom_fichier.wav`
+- Par défaut, l'interface Gradio et le chatbot cherchent dans `data/subset/` si `use_subset=True`
+
+### Setup LM Studio détaillé
+1. Télécharger et installer [LM Studio](https://lmstudio.ai/)
+2. Dans LM Studio, aller dans l'onglet "Search" et télécharger un modèle compatible (ex: `mistralai/mistral-7b-instruct-v0.3`)
+3. Aller dans l'onglet "Local Server" (icône `</>`)
+4. Sélectionner le modèle téléchargé
+5. Cliquer sur "Start Server" (port par défaut : 1234)
+6. Vérifier que le serveur fonctionne : `curl http://localhost:1234/v1/models`
+
+### Alternative : Ollama + FastMCP
+Si vous préférez une approche plus légère sans interface graphique :
+```bash
+# Installer Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Télécharger un modèle
+ollama pull mistral
+
+# Démarrer le serveur
+ollama serve
+```
+
+Modifier ensuite `chatbot/orchestrator_lmstudio.py` pour pointer vers `http://localhost:11434` au lieu de `http://localhost:1234`.
+
+**Pourquoi LM Studio ?** Choisi pour sa simplicité d'utilisation (GUI intuitive) et sa compatibilité OpenAI API. Pour un déploiement production, Ollama + FastMCP serait plus adapté.
+
+### Pourquoi 4 terminaux ?
+L'architecture distribuée nécessite 3 processus distincts :
+1. **Terminal 1** : Serveur MCP (FastAPI) - inférence du modèle CNN
+2. **Terminal 2** : Serveur LLM (LM Studio) - traitement du langage naturel
+3. **Terminal 3** : Interface Gradio - interface web utilisateur
+
+**Simplification** : Le script `scripts/setup_and_run.sh` automatise le lancement des serveurs en arrière-plan, réduisant à 1 seul terminal.
+
+### Erreurs courantes
+
+**`libfuse` manquant (Linux)** :
+```bash
+sudo apt-get install libfuse2  # Ubuntu/Debian
+```
+
+**Conflits de versions Gradio** :
+```bash
+pip install --upgrade gradio>=4.0,<5
+```
+
+**OpenAI API incompatible** :
+Vérifier que LM Studio est bien démarré et que l'URL de base est correcte dans les variables d'environnement.
+
+## 13) Liens
+- UrbanSound8K :  https://urbansounddataset.weebly.com/urbansound8k.html
 

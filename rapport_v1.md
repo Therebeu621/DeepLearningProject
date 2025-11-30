@@ -110,8 +110,61 @@ Le dataset UrbanSound8K contient ~8 732 extraits répartis en 10 classes et 10
 - `evaluate.py`, `infer.py`, `make_subset.py` pour reproduire les expériences, fabriquer un subset léger et exécuter des inférences unitaires.
 
 Deux variantes sont maintenues :
-1. **CNN log-mel** : modèle convolutif léger entraîné from scratch, exporté dans `weights/urbansound_cnn.pt`. Il offre environ 71‑75 % d’accuracy et ~0.72 de macro-F1 sur notre split.
-2. **Baseline embeddings** : on projette chaque WAV via PANNs, puis on entraîne un classifieur linéaire ou MLP. Ce chemin sert de point de comparaison et alimente les rapports “embeddings”.
+1. **CNN log-mel** : modèle convolutif léger entraîné from scratch, exporté dans `weights/urbansound_cnn.pt`. Il offre **71.3 % d'accuracy** et **72.5 % de macro-F1** sur le fold 10 (résultats reproductibles dans `reports/metrics.json`). Les classes percussives comme `gun_shot` (86.5% F1, 100% recall) et `jackhammer` obtiennent d'excellentes performances, tandis que `children_playing` et `street_music` restent plus difficiles en raison de leur grande variabilité spectrale.
+2. **Baseline embeddings** : on projette chaque WAV via PANNs (Pretrained Audio Neural Networks, Kong et al. 2020), un réseau pré-entraîné sur AudioSet contenant 527 classes audio. PANNs génère des embeddings de dimension 2048 représentant des caractéristiques audio de haut niveau. Nous entraînons ensuite un classifieur linéaire ou MLP sur ces embeddings. Ce chemin sert de point de comparaison et alimente les rapports "embeddings".
+
+#### Justification : CNN from scratch vs Transformers
+Contrairement aux approches récentes privilégiant les Transformers (Audio Spectrogram Transformer, Wav2Vec2), nous avons choisi un **CNN simple entraîné from scratch** pour plusieurs raisons :
+
+1. **Taille du dataset** : Avec seulement 7 895 échantillons d'entraînement (folds 1-9), les Transformers risquent fortement le surapprentissage sans pré-entraînement massif. Les CNN ont démontré leur efficacité sur des datasets de taille modeste.
+
+2. **Data augmentation efficace** : Nous compensons la petite taille du dataset par :
+   - SpecAugment (masques temps/fréquence)
+   - Time-shift aléatoire (±10% de la durée)
+   - Ajout de bruit gaussien léger (σ ∈ [0.005, 0.02])
+   - WeightedRandomSampler pour équilibrer les classes déséquilibrées
+
+3. **Inductive bias adapté** : Les spectrogrammes audio présentent des motifs locaux (harmoniques, transitoires) naturellement capturés par les convolutions. Les Transformers nécessitent plus de données pour apprendre ces invariances.
+
+4. **Efficacité computationnelle** : Notre CNN (64k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
+
+**Référence baseline PANNs** : Kong, Q., Cao, Y., Iqbal, T., Wang, Y., Wang, W., & Plumbley, M. D. (2020). PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition. IEEE/ACM Transactions on Audio, Speech, and Language Processing, 28, 2880-2894.
+
+
+#### Justification : CNN from scratch vs Transformers
+Contrairement aux approches récentes privilégiant les Transformers (Audio Spectrogram Transformer, Wav2Vec2), nous avons choisi un **CNN simple entraîné from scratch** pour plusieurs raisons :
+
+1. **Taille du dataset** : Avec seulement 7 895 échantillons d'entraînement (folds 1-9), les Transformers risquent fortement le surapprentissage sans pré-entraînement massif. Les CNN ont démontré leur efficacité sur des datasets de taille modeste.
+
+2. **Data augmentation efficace** : Nous compensons la petite taille du dataset par :
+   - SpecAugment (masques temps/fréquence)
+   - Time-shift aléatoire (±10% de la durée)
+   - Ajout de bruit gaussien léger (σ ∈ [0.005, 0.02])
+   - WeightedRandomSampler pour équilibrer les classes déséquilibrées
+
+3. **Inductive bias adapté** : Les spectrogrammes audio présentent des motifs locaux (harmoniques, transitoires) naturellement capturés par les convolutions. Les Transformers nécessitent plus de données pour apprendre ces invariances.
+
+4. **Efficacité computationnelle** : Notre CNN (64k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
+
+**Référence baseline PANNs** : Kong, Q., Cao, Y., Iqbal, T., Wang, Y., Wang, W., & Plumbley, M. D. (2020). PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition. IEEE/ACM Transactions on Audio, Speech, and Language Processing, 28, 2880-2894.
+
+
+#### Justification : CNN from scratch vs Transformers
+Contrairement aux approches récentes privilégiant les Transformers (Audio Spectrogram Transformer, Wav2Vec2), nous avons choisi un **CNN simple entraîné from scratch** pour plusieurs raisons :
+
+1. **Taille du dataset** : Avec seulement 7 895 échantillons d'entraînement (folds 1-9), les Transformers risquent fortement le surapprentissage sans pré-entraînement massif. Les CNN ont démontré leur efficacité sur des datasets de taille modeste.
+
+2. **Data augmentation efficace** : Nous compensons la petite taille du dataset par :
+   - SpecAugment (masques temps/fréquence)
+   - Time-shift aléatoire (±10% de la durée)
+   - Ajout de bruit gaussien léger (σ ∈ [0.005, 0.02])
+   - WeightedRandomSampler pour équilibrer les classes déséquilibrées
+
+3. **Inductive bias adapté** : Les spectrogrammes audio présentent des motifs locaux (harmoniques, transitoires) naturellement capturés par les convolutions. Les Transformers nécessitent plus de données pour apprendre ces invariances.
+
+4. **Efficacité computationnelle** : Notre CNN (64k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
+
+**Référence baseline PANNs** : Kong, Q., Cao, Y., Iqbal, T., Wang, Y., Wang, W., & Plumbley, M. D. (2020). PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition. IEEE/ACM Transactions on Audio, Speech, and Language Processing, 28, 2880-2894.
 
 Les métriques (accuracy, macro-F1, rapports détaillés par classe) sont exportées dans `reports/metrics*.json` ainsi que des matrices de confusion PNG (normalisée ou non). Cela permet de recharger les performances sans relancer l’entraînement, tout en tenant les poids prêts pour le serveur MCP.
 
