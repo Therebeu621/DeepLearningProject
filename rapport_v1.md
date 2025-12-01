@@ -128,45 +128,7 @@ Contrairement aux approches récentes privilégiant les Transformers (Audio Spec
 
 4. **Efficacité computationnelle** : Notre CNN (64k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
 
-**Référence baseline PANNs** : Kong, Q., Cao, Y., Iqbal, T., Wang, Y., Wang, W., & Plumbley, M. D. (2020). PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition. IEEE/ACM Transactions on Audio, Speech, and Language Processing, 28, 2880-2894.
-
-
-#### Justification : CNN from scratch vs Transformers
-Contrairement aux approches récentes privilégiant les Transformers (Audio Spectrogram Transformer, Wav2Vec2), nous avons choisi un **CNN simple entraîné from scratch** pour plusieurs raisons :
-
-1. **Taille du dataset** : Avec seulement 7 895 échantillons d'entraînement (folds 1-9), les Transformers risquent fortement le surapprentissage sans pré-entraînement massif. Les CNN ont démontré leur efficacité sur des datasets de taille modeste.
-
-2. **Data augmentation efficace** : Nous compensons la petite taille du dataset par :
-   - SpecAugment (masques temps/fréquence)
-   - Time-shift aléatoire (±10% de la durée)
-   - Ajout de bruit gaussien léger (σ ∈ [0.005, 0.02])
-   - WeightedRandomSampler pour équilibrer les classes déséquilibrées
-
-3. **Inductive bias adapté** : Les spectrogrammes audio présentent des motifs locaux (harmoniques, transitoires) naturellement capturés par les convolutions. Les Transformers nécessitent plus de données pour apprendre ces invariances.
-
-4. **Efficacité computationnelle** : Notre CNN (64k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
-
-**Référence baseline PANNs** : Kong, Q., Cao, Y., Iqbal, T., Wang, Y., Wang, W., & Plumbley, M. D. (2020). PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition. IEEE/ACM Transactions on Audio, Speech, and Language Processing, 28, 2880-2894.
-
-
-#### Justification : CNN from scratch vs Transformers
-Contrairement aux approches récentes privilégiant les Transformers (Audio Spectrogram Transformer, Wav2Vec2), nous avons choisi un **CNN simple entraîné from scratch** pour plusieurs raisons :
-
-1. **Taille du dataset** : Avec seulement 7 895 échantillons d'entraînement (folds 1-9), les Transformers risquent fortement le surapprentissage sans pré-entraînement massif. Les CNN ont démontré leur efficacité sur des datasets de taille modeste.
-
-2. **Data augmentation efficace** : Nous compensons la petite taille du dataset par :
-   - SpecAugment (masques temps/fréquence)
-   - Time-shift aléatoire (±10% de la durée)
-   - Ajout de bruit gaussien léger (σ ∈ [0.005, 0.02])
-   - WeightedRandomSampler pour équilibrer les classes déséquilibrées
-
-3. **Inductive bias adapté** : Les spectrogrammes audio présentent des motifs locaux (harmoniques, transitoires) naturellement capturés par les convolutions. Les Transformers nécessitent plus de données pour apprendre ces invariances.
-
-4. **Efficacité computationnelle** : Notre CNN (64k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
-
-**Référence baseline PANNs** : Kong, Q., Cao, Y., Iqbal, T., Wang, Y., Wang, W., & Plumbley, M. D. (2020). PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition. IEEE/ACM Transactions on Audio, Speech, and Language Processing, 28, 2880-2894.
-
-Les métriques (accuracy, macro-F1, rapports détaillés par classe) sont exportées dans `reports/metrics*.json` ainsi que des matrices de confusion PNG (normalisée ou non). Cela permet de recharger les performances sans relancer l’entraînement, tout en tenant les poids prêts pour le serveur MCP.
+Les métriques (accuracy, macro-F1, rapports détaillés par classe) sont exportées dans `reports/metrics*.json` ainsi que des matrices de confusion PNG (normalisée ou non). Cela permet de recharger les performances sans relancer l'entraînement, tout en tenant les poids prêts pour le serveur MCP.
 
 ### MCP (Model Context Protocol)
 `mcp_server/server.py` est une API FastAPI dédiée. Elle charge les poids au démarrage, cache les modèles en mémoire et expose des endpoints :
