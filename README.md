@@ -12,10 +12,7 @@ python -m model.evaluate --no-subset
 
 ## Pour tester avec interface
 
-Prérequis :
-
-    source .venv/bin/activate
-    pip install gradio openai
+Prérequis : Avoir installé les dépendances (`pip install -r requirements.txt`)
 
 Terminal 1 : Serveur MCP (Modèle Spécialiste)
 
