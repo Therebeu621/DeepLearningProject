@@ -5,3 +5,7 @@ data/
 runs/
 .claude/
 .vscode/
+
+# Logs et backups
+mcp_server.log
+*.backup
