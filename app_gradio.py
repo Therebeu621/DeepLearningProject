@@ -338,9 +338,9 @@ def handle_audio_upload(uploaded_file: Optional[str]):
 EXAMPLES = [
     "📊 Quelles sont les metriques du modele CNN ?",
     "📈 Liste les rapports visuels disponibles.",
-    # À adapter avec un vrai chemin WAV chez toi (subset ou UrbanSound8K/audio/...)
-    "🎵 Analyse: data/subset/shot556_29_ch01_180718_162104_16_.wav",
-    "🎵 Analyse: data/subset/O-AS-roos.002.200120.141547.39.wav",
+    # Exemples directs sur le dataset complet UrbanSound8K
+    "🎵 Analyse: data/UrbanSound8K/audio/fold5/100032-3-0-0.wav",
+    "🎵 Analyse: data/UrbanSound8K/audio/fold1/101415-3-0-2.wav",
 ]
 
 if __name__ == "__main__":

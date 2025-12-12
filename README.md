@@ -2,54 +2,59 @@
 
 > **Démarrage rapide**
 > 1. `bash scripts/setup_and_run.sh` (installe, entraîne, évalue, lance le serveur MCP).  
-> 2. Ouvre LM Studio, charge ton modèle (ex. `mistralai/mistral-7b-instruct-v0.3`) et démarre le serveur local (http://127.0.0.1:1234).  
-> 3. `python chatbot/orchestrator_lmstudio.py` pour discuter avec SonicWatch via le LLM.  
-> 4. Tester : `Écoute le son data/subset/shot556_29_ch01_180718_162104_16_.wav et dis-moi ce que c’est`
+> 2. Ouvre LM Studio (GUI), charge ton modèle (ex. `mistralai/mistral-7b-instruct-v0.3`) et démarre le serveur local (http://127.0.0.1:1234).  
+> 3. Option A (web) : `python app_gradio.py` puis ouvre http://127.0.0.1:7860  
+>    Option B (CLI) : `python chatbot/orchestrator_lmstudio.py`  pour discuter avec SonicWatch via le LLM
+> 4. Tester : `Écoute le son data/UrbanSound8K/audio/fold5/100032-3-0-0.wav et dis-moi ce que c’est`
 
 ## Evaluer le modele 
 python -m model.evaluate --no-subset
 
 
-## Pour tester avec interface
+## Pour tester avec interface (LM Studio = application graphique)
 
 Prérequis :
 - Avoir installé les dépendances (`pip install -r requirements.txt`)
-- Avoir LM Studio ouvert avec un modèle chargé (serveur démarré sur port 1234)
+- Avoir LM Studio ouvert (GUI), modèle chargé, serveur démarré sur port 1234
 
-**2 terminaux nécessaires** :
-
-### Terminal 1 : Serveur MCP (Backend Audio)
-
-Charge le modèle PyTorch et sert l'API de classification.
-
+### Option A : Interface Web (Gradio)
+- Terminal 1 : Serveur MCP (backend audio)
 ```bash
 source .venv/bin/activate
 uvicorn mcp_server.server:app --port 8000
 ```
-
-### Terminal 2 : Interface Web (Frontend Gradio)
-
-Lance l'application web qui connecte MCP + LM Studio.
-
+- Terminal 2 : Interface web
 ```bash
 source .venv/bin/activate
 python app_gradio.py
 ```
+Puis ouvre **http://127.0.0.1:7860** dans le navigateur.
 
-Ouvrez votre navigateur : **http://127.0.0.1:7860**
+### Option B : Interface CLI (orchestrator LM Studio)
+- Terminal 1 : Serveur MCP (identique)
+```bash
+source .venv/bin/activate
+uvicorn mcp_server.server:app --port 8000
+```
+- Terminal 2 : Orchestrateur CLI
+```bash
+source .venv/bin/activate
+python chatbot/orchestrator_lmstudio.py
+```
+Tu verras : `🧠 LM Studio orchestrateur prêt. Tape 'exit' pour quitter.`
 
----
+Exemples de requêtes CLI :
+- `Écoute le son data/UrbanSound8K/audio/fold5/100032-3-0-0.wav et dis-moi ce que c'est`
+- `Quelles sont les métriques du modèle CNN ?`
+- `Liste les rapports disponibles`
 
-### Configuration LM Studio (Application Graphique)
+### Configuration LM Studio (GUI)
+1. Ouvre **LM Studio** (application graphique)
+2. Charge un modèle (ex: **Mistral 7B**)
+3. Onglet **Serveur** (`</>`)
+4. Bouton **Start Server** (port par défaut : 1234)
 
-**Avant de lancer les terminaux**, ouvrez LM Studio :
-
-1. Ouvrez l'application **LM Studio** (interface graphique)
-2. Chargez un modèle (ex: **Mistral 7B**)
-3. Allez à l'onglet **Serveur** (`</>`)
-4. Cliquez sur **"Start Server"** (port par défaut : 1234)
-
-**Note** : Par défaut, Gradio se connecte à `http://localhost:1234/v1`. Si LM Studio tourne sur une autre machine/port :
+Note : Gradio se connecte par défaut à `http://localhost:1234/v1`. Si LM Studio tourne sur une autre machine/port :
 ```bash
 export LMSTUDIO_BASE="http://<IP>:<PORT>/v1"
 python app_gradio.py
