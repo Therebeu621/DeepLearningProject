@@ -178,7 +178,12 @@ source .venv/bin/activate
 pip install -r requirements.txt    # torch, torchaudio, librosa, scikit-learn, fastapi, uvicorn, numpy, requests…
 ```
 
-## 7) Entraînement (repro officielle)
+## 7) Entraînement (optionnel)
+
+> ⚠️ **Note** : Le script `setup_and_run.sh` utilise les poids pré-entraînés (`weights/urbansound_cnn.pt`).  
+> Cette section est uniquement si tu veux régénérer les poids toi-même.
+
+Commande d'entraînement (repro officielle) :
 ```bash
 export URBAN_SOUND_ROOT="$PWD/data/UrbanSound8K"
 python -m model.train --epochs 15 --batch-size 32 \
@@ -189,6 +194,9 @@ python -m model.train --epochs 15 --batch-size 32 \
 - `--use-sampler` : équilibre les batches.  
 - `--aug-spec` : active SpecAugment.  
 - Early stopping surveille la perte validation.
+
+**Temps estimé** : ~15-30 minutes (CPU) ou ~5-10 minutes (GPU)  
+**Output** : `weights/urbansound_cnn.pt`
 
 ## 8) Évaluation
 ```bash
