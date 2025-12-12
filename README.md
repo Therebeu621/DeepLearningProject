@@ -12,38 +12,48 @@ python -m model.evaluate --no-subset
 
 ## Pour tester avec interface
 
-Prérequis : Avoir installé les dépendances (`pip install -r requirements.txt`)
+Prérequis :
+- Avoir installé les dépendances (`pip install -r requirements.txt`)
+- Avoir LM Studio ouvert avec un modèle chargé (serveur démarré sur port 1234)
 
-Terminal 1 : Serveur MCP (Modèle Spécialiste)
+**2 terminaux nécessaires** :
 
-Charge le modèle PyTorch et le sert via l'API.
-Bash
+### Terminal 1 : Serveur MCP (Backend Audio)
 
-    source .venv/bin/activate
-    uvicorn mcp_server.server:app --port 8000
+Charge le modèle PyTorch et sert l'API de classification.
 
-Terminal 2 : Serveur LLM (LM Studio)
+```bash
+source .venv/bin/activate
+uvicorn mcp_server.server:app --port 8000
+```
 
-Charge le modèle de langue pour le dialogue.
+### Terminal 2 : Interface Web (Frontend Gradio)
 
-    Ouvrez LM Studio.
+Lance l'application web qui connecte MCP + LM Studio.
 
-    Chargez un modèle (ex: Mistral 7B).
+```bash
+source .venv/bin/activate
+python app_gradio.py
+```
 
-    Allez à l'onglet Serveur (</>) et cliquez sur "Start Server".
+Ouvrez votre navigateur : **http://127.0.0.1:7860**
 
- Terminal 3 : Interface Web (Gradio)
+---
 
-Lance l'application web qui connecte les deux serveurs.
-Bash
+### Configuration LM Studio (Application Graphique)
 
-    source .venv/bin/activate
-    python app_gradio.py
+**Avant de lancer les terminaux**, ouvrez LM Studio :
 
+1. Ouvrez l'application **LM Studio** (interface graphique)
+2. Chargez un modèle (ex: **Mistral 7B**)
+3. Allez à l'onglet **Serveur** (`</>`)
+4. Cliquez sur **"Start Server"** (port par défaut : 1234)
 
-Ouvrez votre navigateur et allez à l'URL affichée dans le Terminal 3 :
-
-    http://127.0.0.1:7860
+**Note** : Par défaut, Gradio se connecte à `http://localhost:1234/v1`. Si LM Studio tourne sur une autre machine/port :
+```bash
+export LMSTUDIO_BASE="http://<IP>:<PORT>/v1"
+python app_gradio.py
+```
  
 
 ## 1) Introduction
