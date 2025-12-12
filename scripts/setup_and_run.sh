@@ -44,13 +44,7 @@ if [ ! -f "$META" ] || [ ! -d "$URBAN_SOUND_ROOT/audio" ]; then
 fi
 echo "✅ UrbanSound8K détecté (metadata + audio)."
 
-# 5) Entraînement
-python -m model.train --epochs 15 --batch-size 32 --no-subset --use-sampler --aug-spec --lr 3e-4
-
-# 6) Évaluation
-python -m model.evaluate --no-subset
-
-# 7) Lancer MCP (background)
+# 5) Lancer MCP (background)
 echo "🔌 Démarrage du serveur MCP…"
 pkill -f "uvicorn mcp_server.server:app" >/dev/null 2>&1 || true
 uvicorn mcp_server.server:app --host 127.0.0.1 --port 8000 \
@@ -58,7 +52,7 @@ uvicorn mcp_server.server:app --host 127.0.0.1 --port 8000 \
 MCP_PID=$!
 echo "MCP PID: $MCP_PID (logs : /tmp/mcp_server.log)"
 
-# 8) Tests rapides
+# 6) Tests rapides
 echo "🔎 Tests de santé API"
 curl -s http://127.0.0.1:8000/health || true
 curl -s http://127.0.0.1:8000/metrics?variant=cnn || true
@@ -66,8 +60,8 @@ curl -s http://127.0.0.1:8000/metrics?variant=cnn || true
 cat <<'EOF'
 
 📌 Commandes utiles :
-  python -m model.infer --wav data/subset/shot556_29_ch01_180718_162104_16_.wav --topk 3
-  python chatbot/orchestrator.py infer data/subset/shot556_29_ch01_180718_162104_16_.wav --topk 3
+  python -m model.infer --wav data/UrbanSound8K/audio/fold5/100032-3-0-0.wav --topk 3
+  python chatbot/orchestrator.py infer data/UrbanSound8K/audio/fold5/100032-3-0-0.wav --topk 3
   curl -s http://127.0.0.1:8000/metrics?variant=cnn | jq
 
 Arrêt du serveur MCP :
