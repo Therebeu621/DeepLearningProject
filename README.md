@@ -1,7 +1,7 @@
 # SonicWatch – UrbanSound8K
 
 > **Démarrage rapide**
-> 1. `bash scripts/setup_and_run.sh` (installe, entraîne, évalue, lance le serveur MCP).  
+> 1. `bash scripts/setup_and_run.sh` (installe les dépendances et lance le serveur MCP en background).  
 > 2. Ouvre LM Studio (GUI), charge ton modèle (ex. `mistralai/mistral-7b-instruct-v0.3`) et démarre le serveur local (http://127.0.0.1:1234).  
 > 3. Option A (web) : `python app_gradio.py` puis ouvre http://127.0.0.1:7860  
 >    Option B (CLI) : `python chatbot/orchestrator_lmstudio.py`  pour discuter avec SonicWatch via le LLM
@@ -13,12 +13,22 @@ python -m model.evaluate --no-subset
 
 ## Pour tester avec interface (LM Studio = application graphique)
 
+> ⚠️ **Note** : Si tu as lancé `bash scripts/setup_and_run.sh`, le serveur MCP tourne déjà en background sur le port 8000.  
+> Tu peux passer directement à "Interface web" ou "Interface CLI" ci-dessous.
+
 Prérequis :
-- Avoir installé les dépendances (`pip install -r requirements.txt`)
 - Avoir LM Studio ouvert (GUI), modèle chargé, serveur démarré sur port 1234
 
 ### Option A : Interface Web (Gradio)
-- Terminal 1 : Serveur MCP (backend audio)
+
+**Méthode rapide** (serveur MCP déjà lancé par `setup_and_run.sh`) :
+```bash
+python app_gradio.py
+# Puis ouvre http://127.0.0.1:7860
+```
+
+**Méthode manuelle** (si tu n'as pas utilisé `setup_and_run.sh`) :
+- Terminal 1 : Serveur MCP
 ```bash
 source .venv/bin/activate
 uvicorn mcp_server.server:app --port 8000
@@ -31,7 +41,15 @@ python app_gradio.py
 Puis ouvre **http://127.0.0.1:7860** dans le navigateur.
 
 ### Option B : Interface CLI (orchestrator LM Studio)
-- Terminal 1 : Serveur MCP (identique)
+
+**Méthode rapide** (serveur MCP déjà lancé) :
+```bash
+python chatbot/orchestrator_lmstudio.py
+# Tu verras : 🧠 LM Studio orchestrateur prêt. Tape 'exit' pour quitter.
+```
+
+**Méthode manuelle** (sans `setup_and_run.sh`) :
+- Terminal 1 : Serveur MCP
 ```bash
 source .venv/bin/activate
 uvicorn mcp_server.server:app --port 8000
@@ -41,7 +59,6 @@ uvicorn mcp_server.server:app --port 8000
 source .venv/bin/activate
 python chatbot/orchestrator_lmstudio.py
 ```
-Tu verras : `🧠 LM Studio orchestrateur prêt. Tape 'exit' pour quitter.`
 
 Exemples de requêtes CLI :
 - `Écoute le son data/UrbanSound8K/audio/fold5/100032-3-0-0.wav et dis-moi ce que c'est`
@@ -194,9 +211,6 @@ python -m model.train --epochs 15 --batch-size 32 \
 - `--use-sampler` : équilibre les batches.  
 - `--aug-spec` : active SpecAugment.  
 - Early stopping surveille la perte validation.
-
-**Temps estimé** : ~15-30 minutes (CPU) ou ~5-10 minutes (GPU)  
-**Output** : `weights/urbansound_cnn.pt`
 
 ## 8) Évaluation
 ```bash
