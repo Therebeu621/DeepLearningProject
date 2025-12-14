@@ -147,7 +147,7 @@ L’orchestrateur appelle d’abord /infer (ou /metrics /reports selon le besoin
 Le CSS personnalisé apporte transparence, ombres, hover effects et rend l'interface lisible même sur petits écrans.
 
 ## Développement : difficultés et solutions
-- **Mise en place de l’environnement** : UrbanSound8K est volumineux (plusieurs Go) et PyTorch doit rester en mode CPU pour respecter les contraintes de certaines machines. Nous avons scripté `scripts/setup_and_run.sh`, limité Torch à la version CPU (`--extra-index-url https://download.pytorch.org/whl/cpu`) et utilisé un subset `data/subset/` pour les tests rapides. Cela nous permet d’itérer sans réimporter l’intégralité du dataset.
+- **Mise en place de l'environnement** : UrbanSound8K est volumineux (plusieurs Go) et PyTorch doit rester en mode CPU pour respecter les contraintes de certaines machines. Nous avons scripté `scripts/setup_and_run.sh` qui télécharge le dataset si nécessaire, limite Torch à la version CPU et lance le serveur MCP avec les poids pré-entraînés fournis (`weights/urbansound_cnn.pt`).
 
 - **Conception du modèle** : équilibrer les classes et éviter l’overfitting s’est avéré délicat. Nous avons combiné `WeightedRandomSampler`, SpecAugment léger et un early stopping basé sur la perte de validation. La baseline PANNs sert de garde-fou : si une régression apparaît sur le CNN, nous pouvons comparer rapidement avec les embeddings.
 
@@ -155,15 +155,23 @@ Le CSS personnalisé apporte transparence, ombres, hover effects et rend l'inter
 
 - **Intégration LLM** : LM Studio n’accepte que les rôles `user/assistant`. Nous avons donc converti les messages système en pseudo-messages utilisateur lors de l’envoi (helper `prepare_messages_for_lmstudio`). Nous avons également dû reformuler certaines réponses côté Python (résumés top‑k, listes de rapports) pour éviter que le LLM ne se lance dans de longs paragraphes hors sujet.
 
-- **Interface Gradio** : au départ, la zone d’upload occupait la moitié de l’écran. Nous avons réduit les marges, remplacé le composant `Audio` par un `UploadButton` plus compact et ajouté des exemples préremplis pour guider les tests. Le CSS glassmorphism améliore le contraste et rend visibles les états (boutons, hover, statuts). L’utilisateur peut maintenant soit taper un chemin, soit glisser-déposer un fichier.
+- **Interface Gradio** : au départ, la zone d'upload occupait la moitié de l'écran. Nous avons réduit les marges, remplacé le composant `Audio` par `gr.File` plus compact et ajouté des exemples préremplis pour guider les tests. Nous avons également résolu un bug de compatibilité Python 3.12/Gradio 4.44 (`TypeError: 'bool' is not iterable`) en patchant `gradio_client.utils`. Le CSS glassmorphism améliore le contraste et rend visibles les états. L'utilisateur peut maintenant soit taper un chemin, soit glisser-déposer un fichier.
 
 ## Conclusion
-Cette première version de SonicWatch livre un pipeline complet : modèles CNN et embeddings entraînés, métriques exportées, serveur MCP opérationnel, orchestrateur CLI et chatbot Gradio connectés à un LLM local. Nous savons désormais manipuler des données audio en PyTorch, entraîner des modèles convolutionnels, exploiter un LLM via une API compatible OpenAI, concevoir un protocole MCP simplifié et bâtir une interface moderne.
 
-Pour la suite, nous envisageons plusieurs améliorations :
+Cette **deuxième version** de SonicWatch consolide le projet avec plusieurs améliorations :
 
-1. Raffiner l’architecture et les hyperparamètres du CNN (exploration d’autres schémas de convolution, réglage plus fin des augmentations et de la régularisation).
-2. Améliorer encore l’interface utilisateur et le prompt du chatbot (messages plus pédagogiques, meilleure gestion des cas ambigus, nouveaux exemples guidés).
-3. Simplifier le déploiement en fournissant un empaquetage plus intégré (scripts supplémentaires, voire une conteneurisation type Docker ou une alternative à LM Studio si nécessaire).
+**Ce qui a été accompli :**
+- Un **CNN fonctionnel** atteignant 71.3% d'accuracy avec seulement 217k paramètres
+- Une **baseline PANNs** (transfer learning) atteignant 84.3% d'accuracy, validant l'intérêt du pré-entraînement
+- Une **interface Gradio** moderne avec chat conversationnel et upload de fichiers
+- Une **architecture micro-services** modulaire (CNN + MCP + LLM + Gradio)
+- Un **workflow simplifié** : poids pré-entraînés fournis, setup automatisé, documentation clarifiée
+- Résolution de bugs de compatibilité Python 3.12 / Gradio 4.44
 
-Avec ces fondations, nous disposons d’un socle solide pour livrer une version 2 plus performante et mieux outillée pour l’industrie.
+**Perspectives d'amélioration :**
+1. Fine-tuning de PANNs sur UrbanSound8K pour dépasser les 84% actuels
+2. Collecte de données supplémentaires pour les classes difficiles (children_playing, street_music)
+3. Conteneurisation Docker pour un déploiement simplifié
+4. Enregistrement micro en temps réel pour une utilisation terrain
+
