@@ -217,9 +217,9 @@ python -m model.train --epochs 15 --batch-size 32 \
 python -m model.evaluate --no-subset
 ```
 Exemple actuel :
-- Accuracy globale ≈ **75 %**
+- Accuracy globale ≈ **71 %**
 - Macro-F1 ≈ **0.73**
-- dog_bark F1 ≈ 0.80 • jackhammer ≈ 0.96 • street_music ≈ 0.55 • children_playing ≈ 0.57  
+- jackhammer F1 ≈ 0.91 • gun_shot ≈ 0.86 • dog_bark ≈ 0.76 • street_music ≈ 0.69 • children_playing ≈ 0.57  
 Artefacts produits : `reports/confusion_matrix.png`, `reports/confusion_matrix_norm.png`, `reports/metrics.json`.
 
 ## 9) Serveur MCP (FastAPI)

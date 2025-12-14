@@ -39,11 +39,11 @@ vérifie la présence de l’environnement virtuel et des dépendances ;
 
 télécharge UrbanSound8K si nécessaire et prépare l’arborescence data/UrbanSound8K ;
 
-entraîne le modèle CNN sur le dataset complet ;
+entraîne le modèle CNN sur le dataset complet (optionnel, désactivé par défaut) ;
 
-évalue le modèle et génère les métriques et matrices de confusion dans reports/ ;
+lance le serveur MCP (FastAPI) en arrière-plan avec les poids pré-entraînés.
 
-lance le serveur MCP (FastAPI) en arrière-plan.
+> **Note** : Le script utilise désormais les poids pré-entraînés. L'entraînement et l'évaluation sont optionnels (voir README).
 
 Une fois cette étape terminée :
 
@@ -96,7 +96,7 @@ en mode interface Web :
 python app_gradio.py
 ```
 
-Dans tous les cas, l’utilisateur peut soit taper une consigne en français (par exemple « Écoute le son data/subset/shot556_29_ch01_180718_162104_16_.wav et dis-moi ce que c’est »), soit importer un fichier WAV via l’interface Gradio.
+Dans tous les cas, l'utilisateur peut soit taper une consigne en français (par exemple « Écoute le son data/UrbanSound8K/audio/fold5/100032-3-0-0.wav et dis-moi ce que c'est »), soit importer un fichier WAV via l'interface Gradio.
 
 ## Méthodologie
 
@@ -126,7 +126,7 @@ Contrairement aux approches récentes privilégiant les Transformers (Audio Spec
 
 3. **Inductive bias adapté** : Les spectrogrammes audio présentent des motifs locaux (harmoniques, transitoires) naturellement capturés par les convolutions. Les Transformers nécessitent plus de données pour apprendre ces invariances.
 
-4. **Efficacité computationnelle** : Notre CNN (64k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
+4. **Efficacité computationnelle** : Notre CNN (~217k paramètres) s'entraîne en ~15 minutes sur CPU et infère en <100ms par fichier. Un Transformer comparable nécessiterait GPU et temps d'entraînement ×10.
 
 Les métriques (accuracy, macro-F1, rapports détaillés par classe) sont exportées dans `reports/metrics*.json` ainsi que des matrices de confusion PNG (normalisée ou non). Cela permet de recharger les performances sans relancer l'entraînement, tout en tenant les poids prêts pour le serveur MCP.
 
