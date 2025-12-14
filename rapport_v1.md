@@ -139,12 +139,12 @@ Les métriques (accuracy, macro-F1, rapports détaillés par classe) sont export
 L’orchestrateur appelle d’abord /infer (ou /metrics /reports selon le besoin), construit un bloc textuel formaté (classe, confiance, top‑k, statistiques globales) puis le transmet au LLM pour verbaliser la réponse. Cette séquence garantit que les informations chiffrées proviennent toujours du modèle spécialiste, et que le LLM n’invente pas de nouveaux résultats.
 
 ### Interface utilisateur
-`app_gradio.py` fournit l’UI Web. Elle s’appuie sur `gr.ChatInterface` (zone de chat, historique, exemples cliquables) et ajoute :
-- Un en‑tête glassmorphism (gradient, typographie Inter, icônes).
+`app_gradio.py` fournit l'UI Web. Elle s'appuie sur `gr.Blocks` avec un layout en deux colonnes (chat à gauche, upload à droite) et ajoute :
+- Un en‑tête glassmorphism (gradient, typographie, icônes).
 - Un sélecteur de prompts exemples (métriques, rapports, analyses prédéfinies).
-- Un module d’upload WAV (`UploadButton`) avec statut visuel “fichier prêt” et un bouton “Analyser ce fichier”.
-- Une carte d’information rappelant les formats supportés, le nombre de classes et l’accuracy actuelle.
-Le CSS personnalisé apporte transparence, ombres, hover effects et une mise en page en deux colonnes (chat + sidebar upload), ce qui rend l’interface lisible même sur petits écrans.
+- Un module d'upload WAV (`gr.File`) avec statut visuel et un bouton "Analyser ce fichier".
+- Une carte d'information rappelant les formats supportés, le nombre de classes et le modèle utilisé.
+Le CSS personnalisé apporte transparence, ombres, hover effects et rend l'interface lisible même sur petits écrans.
 
 ## Développement : difficultés et solutions
 - **Mise en place de l’environnement** : UrbanSound8K est volumineux (plusieurs Go) et PyTorch doit rester en mode CPU pour respecter les contraintes de certaines machines. Nous avons scripté `scripts/setup_and_run.sh`, limité Torch à la version CPU (`--extra-index-url https://download.pytorch.org/whl/cpu`) et utilisé un subset `data/subset/` pour les tests rapides. Cela nous permet d’itérer sans réimporter l’intégralité du dataset.
