@@ -35,13 +35,9 @@ bash scripts/setup_and_run.sh
 
 Ce script :
 
-vérifie la présence de l’environnement virtuel et des dépendances ;
-
-télécharge UrbanSound8K si nécessaire et prépare l’arborescence data/UrbanSound8K ;
-
-entraîne le modèle CNN sur le dataset complet (optionnel, désactivé par défaut) ;
-
-lance le serveur MCP (FastAPI) en arrière-plan avec les poids pré-entraînés.
+- **Gère l'environnement** : détecte Python, crée le `venv` et installe les dépendances ;
+- **Vérifie les pré-requis** : s'assure que le modèle pré-entraîné est bien présent ;
+- **Lance l'application** : démarre le serveur MCP en arrière-plan et ouvre l'interface utilisateur.
 
 > **Note** : Le script utilise désormais les poids pré-entraînés. L'entraînement et l'évaluation sont optionnels (voir README).
 
