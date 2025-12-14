@@ -1,4 +1,4 @@
-# Rapport V1 – SonicWatch
+# Rapport V2 – SonicWatch
 
 ## Introduction
 La démocratisation des grands modèles de langage (LLM) permet désormais aux entreprises de créer des assistants spécialisés capables de converser dans un langage naturel tout en s’appuyant sur des briques métiers précises. Cette combinaison LLM + outils métiers est particulièrement intéressante pour les cas d’usage où l’interprétation et la pédagogie sont aussi importantes que le calcul lui‑même : maintenance industrielle, cybersécurité, ou, comme dans notre cas, analyse acoustique. Les chatbots professionnels ont donc besoin d’interfaces qui guident l’utilisateur, sécurisent les appels aux modèles, et offrent un rendu intelligible des résultats.
