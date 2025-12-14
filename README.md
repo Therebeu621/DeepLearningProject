@@ -41,7 +41,6 @@ Puis ouvre **http://127.0.0.1:7860** dans le navigateur.
 **Méthode rapide** (serveur MCP déjà lancé) :
 ```bash
 python chatbot/orchestrator_lmstudio.py
-# Tu verras : 🧠 LM Studio orchestrateur prêt. Tape 'exit' pour quitter.
 ```
 
 **Méthode manuelle** (sans `setup_and_run.sh`) :
@@ -186,15 +185,12 @@ DeepLearningProject/
 
 ## 6) Installation & Environnement
 ```bash
-python3 -m venv .venv      # (Python 3.8 à 3.12 requis)
+python3 -m venv .venv      
 source .venv/bin/activate
-pip install -r requirements.txt    # torch, torchaudio, librosa, scikit-learn, fastapi, uvicorn, numpy, requests…
+pip install -r requirements.txt    
 ```
 
 ## 7) Entraînement (optionnel)
-
-> ⚠️ **Note** : Le script `setup_and_run.sh` utilise les poids pré-entraînés (`weights/urbansound_cnn.pt`).  
-> Cette section est uniquement si tu veux régénérer les poids toi-même.
 
 Commande d'entraînement (repro officielle) :
 ```bash
@@ -351,8 +347,8 @@ sudo apt-get install libfuse2  # Ubuntu/Debian
 pip install --upgrade gradio>=4.0,<5
 ```
 
-**OpenAI API incompatible** :
-Vérifier que LM Studio est bien démarré et que l'URL de base est correcte dans les variables d'environnement.
+**Erreur de connexion au LLM local** :
+Vérifier que LM Studio est bien démarré et que l'URL de base est correcte dans les variables d'environnement. 
 
 ## 15) Liens
 - UrbanSound8K :  https://urbansounddataset.weebly.com/urbansound8k.html
