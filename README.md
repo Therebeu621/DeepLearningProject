@@ -7,10 +7,6 @@
 >    Option B (CLI) : `python chatbot/orchestrator_lmstudio.py`  pour discuter avec SonicWatch via le LLM
 > 4. Tester : `Écoute le son data/UrbanSound8K/audio/fold5/100032-3-0-0.wav et dis-moi ce que c’est`
 
-## Evaluer le modele 
-python -m model.evaluate --no-subset
-
-
 ## Pour tester avec interface (LM Studio = application graphique)
 
 > ⚠️ **Note** : Si tu as lancé `bash scripts/setup_and_run.sh`, le serveur MCP tourne déjà en background sur le port 8000.  
@@ -190,7 +186,7 @@ DeepLearningProject/
 
 ## 6) Installation & Environnement
 ```bash
-python3.12 -m venv .venv
+python3 -m venv .venv      # (Python 3.8 à 3.12 requis)
 source .venv/bin/activate
 pip install -r requirements.txt    # torch, torchaudio, librosa, scikit-learn, fastapi, uvicorn, numpy, requests…
 ```
