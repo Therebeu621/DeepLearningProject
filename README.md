@@ -1,5 +1,13 @@
 # SonicWatch – UrbanSound8K
 
+## Contexte du projet
+
+Ce projet a été réalisé dans le cadre d’un sujet de deep learning par la pratique centré sur la conception d’un chatbot spécialisé. L’objectif était de construire un assistant conversationnel local capable de servir d’interface à un modèle de machine learning dédié à une tâche précise.
+
+Dans SonicWatch, cette spécialisation porte sur la classification de sons urbains à partir de fichiers audio. Le système combine un modèle PyTorch entraîné sur UrbanSound8K, un serveur local d’inférence et un LLM local chargé de guider l’utilisateur et d’expliquer les résultats de manière conversationnelle.
+
+![Aperçu SonicWatch](docs/apercu.png)
+
 > **Démarrage rapide**
 > 1. `bash scripts/setup_and_run.sh` (installe les dépendances et lance le serveur MCP en background).  
 > 2. Ouvre LM Studio (GUI), charge ton modèle (ex. `mistralai/mistral-7b-instruct-v0.3`) et démarre le serveur local (http://127.0.0.1:1234).  
